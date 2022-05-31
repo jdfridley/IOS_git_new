@@ -35,6 +35,7 @@ dat$region = substr(dat$site,1,1)
   #11592 observations, 95 cols
 dat$Date = as.Date(dat$date,format="%m/%d/%y")
 dat$sppcode[dat$sppcode=="amrt"] = "amart" #fix typo
+dat$ID = as.character(dat$ID)
 dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
 
 #### Variable inspection
