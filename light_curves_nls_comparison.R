@@ -1,5 +1,7 @@
 #NSF project, light curves from nls, for Julie's analysis
 
+library(nlstools)
+
 dfold = "/Users/etudiant/Documents/IOS_git/IOS_data/"
 
 dat = read.csv(paste0(dfold,"all_licor_data2.csv"))
@@ -116,11 +118,31 @@ for(i in 1:length(sample)) {
   curve.nlslrc = nls(photolrc ~ (1/(2*theta))*(AQY*PARlrc+Am-sqrt((AQY*PARlrc+Am)^2-4*AQY*theta*Am*PARlrc))-Rd,start=list(Am=(max(photolrc)-min(photolrc)),AQY=0.05,Rd=-min(photolrc),theta=1),control=list(warnOnly=T,tol=.1)) 
   summary(curve.nlslrc) #summary of model fit; coef 1 is Amax, 2 is AQY, 3 is Rd, 4 is theta
 
+  res = nlsResiduals(curve.nlslrc) #extracts std residuals from nls fit
+  stdres = res$resi2[,2]  #standardized residuals
+  
+  #refit without std res > 2
+  thresh = 2
+  thresh2 = c(32,64,65,66,67,69,70,71,73,74,85,86,100,122,125,128,132,158,165,167)
+  if(is.element(i,thresh2)) thresh = 1 #some curves need lower threshold for std res
+  skip = c(31,151) #a few curves break with fewer points
+  if(is.element(i,skip)==F) {
+    curve.nlslrc = nls(photolrc ~ (1/(2*theta))*(AQY*PARlrc+Am-sqrt((AQY*PARlrc+Am)^2-4*AQY*theta*Am*PARlrc))-Rd,start=list(Am=(max(photolrc)-min(photolrc)),AQY=0.05,Rd=-min(photolrc),theta=1),control=list(warnOnly=T,tol=.1),subset=abs(stdres)<thresh) 
+  }
+  
+  #cut based on time
+  #groups = as.numeric(cut(df$FTime,2)) #two groups
+  #true = groups == median(groups) #most common group
+  
+  #refit without smaller group
+  #curve.nlslrc = nls(photolrc ~ (1/(2*theta))*(AQY*PARlrc+Am-sqrt((AQY*PARlrc+Am)^2-4*AQY*theta*Am*PARlrc))-Rd,start=list(Am=(max(photolrc)-min(photolrc)),AQY=0.05,Rd=-min(photolrc),theta=1),control=list(warnOnly=T,tol=.1),subset=true)
+
   #check fit
   par(mar=c(3,3,3,0))
   plot(PARlrc,photolrc,xlab="", ylab="", ylim=c(-2,max(photolrc)+2),cex.lab=1.2,cex.axis=1.5,cex=2)
   title(main=sample[i],line=2)
-  points(PARlrc,photolrc,col=as.numeric(cut(df$FTime,5)),pch=19,cex=1.5)
+  #points(PARlrc,photolrc,col=true,pch=19,cex=1.5)
+  points(PARlrc,photolrc,col=abs(stdres)>thresh,pch=19,cex=1.5)
   mtext(expression("PPFD ("*mu*"mol photons "*m^-2*s^-1*")"),side=1,line=3.3,cex=2)
   mtext(expression(A[net]*" ("*mu*"mol "*CO[2]*" "*m^-2*s^-1*")"),side=2,line=2,cex=2)
   curve((1/(2*summary(curve.nlslrc)$coef[4,1]))*(summary(curve.nlslrc)$coef[2,1]*x+summary(curve.nlslrc)$coef[1,1]-sqrt((summary(curve.nlslrc)$coef[2,1]*x+summary(curve.nlslrc)$coef[1,1])^2-4*summary(curve.nlslrc)$coef[2,1]*summary(curve.nlslrc)$coef[4,1]*summary(curve.nlslrc)$coef[1,1]*x))-summary(curve.nlslrc)$coef[3,1],lwd=2,col="blue",add=T)
