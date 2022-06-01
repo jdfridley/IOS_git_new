@@ -109,6 +109,10 @@ for(i in 1:length(sample)) {
     df = df[(df$PARi>800&df$Photo<6)==F,]
   }
   
+  if(sample[i]=="ropse-E20-1") {
+    df = df[(df$Photo>13)==F,]
+  }
+  
   #Mason's A-q code 
   PARlrc<-df$PARi #PAR (aka PPFD or Q)
   photolrc<-df$Photo #net photosynthetic rate (Anet)
@@ -147,7 +151,7 @@ for(i in 1:length(sample)) {
   mtext(expression(A[net]*" ("*mu*"mol "*CO[2]*" "*m^-2*s^-1*")"),side=2,line=2,cex=2)
   curve((1/(2*summary(curve.nlslrc)$coef[4,1]))*(summary(curve.nlslrc)$coef[2,1]*x+summary(curve.nlslrc)$coef[1,1]-sqrt((summary(curve.nlslrc)$coef[2,1]*x+summary(curve.nlslrc)$coef[1,1])^2-4*summary(curve.nlslrc)$coef[2,1]*summary(curve.nlslrc)$coef[4,1]*summary(curve.nlslrc)$coef[1,1]*x))-summary(curve.nlslrc)$coef[3,1],lwd=2,col="blue",add=T)
   text(100,0,i)
-  readline() #pause until any input
+  #readline() #pause until any input
   
   #save params
   Amax[i] = coef(curve.nlslrc)[1]
@@ -176,48 +180,15 @@ which(out$Amax>40)
 bad.samples = c(bad.samples,as.character(out$sample[out$Amax>40&!is.na(out$Amax)]))
 
 summary(out$AQY)
-out$sample[out$AQY>1]
-which(out$AQY>1)
+out$sample[out$AQY>.35]
+which(out$AQY>.35)
 bad.samples = unique(c(bad.samples,as.character(out$sample[out$AQY>1&!is.na(out$AQY)])))
-  #19
 
 summary(out$Rd)
 out$sample[out$Rd>5]
   #no new bad samples
 
-summary(out$theta)
-bad.theta = as.character(out$sample[out$theta<0|out$theta>1])
-bad.samples2 = sort(unique(c(bad.samples,bad.theta)))
+#dataset is good: export
+#write.csv(out,"lightcurves_nls_output.csv")
 
-#examine 1 by 1
-
-for(i in 1:length(bad.samples2)) {
-  sample = bad.samples2[i]
-  df = dat2[dat2$ID==sample,]
-  
-  #Mason's A-q code 
-  PARlrc<-df$PARi #PAR (aka PPFD or Q)
-  photolrc<-df$Photo #net photosynthetic rate (Anet)
-  curvelrc<-data.frame(PARlrc,photolrc)
-  
-  #check fit
-  par(mar=c(3,3,3,0))
-  plot(PARlrc,photolrc,xlab="", ylab="", ylim=c(-2,max(photolrc)+2),cex.lab=1.2,cex.axis=1.5,cex=2)
-  title(main=sample,line=2)
-  readline() 
-}  
-  
-  mtext(expression("PPFD ("*mu*"mol photons "*m^-2*s^-1*")"),side=1,line=3.3,cex=2)
-  mtext(expression(A[net]*" ("*mu*"mol "*CO[2]*" "*m^-2*s^-1*")"),side=2,line=2,cex=2)
-  curve((1/(2*summary(curve.nlslrc)$coef[4,1]))*(summary(curve.nlslrc)$coef[2,1]*x+summary(curve.nlslrc)$coef[1,1]-sqrt((summary(curve.nlslrc)$coef[2,1]*x+summary(curve.nlslrc)$coef[1,1])^2-4*summary(curve.nlslrc)$coef[2,1]*summary(curve.nlslrc)$coef[4,1]*summary(curve.nlslrc)$coef[1,1]*x))-summary(curve.nlslrc)$coef[3,1],lwd=2,col="blue",add=T)
-  #readline() #pause until any input
-  
-  
-  #fit curve
-  curve.nlslrc = nls(photolrc ~ (1/(2*theta))*(AQY*PARlrc+Am-sqrt((AQY*PARlrc+Am)^2-4*AQY*theta*Am*PARlrc))-Rd,start=list(Am=(max(photolrc)-min(photolrc)),AQY=0.05,Rd=-min(photolrc),theta=1),control=list(warnOnly=T,tol=.1)) 
-  summary(curve.nlslrc) #summary of model fit; coef 1 is Amax, 2 is AQY, 3 is Rd, 4 is theta
-  
-
-  
-}
 
