@@ -71,6 +71,40 @@ plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,
 legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
 legend(legend="Herbaceous","topright",bty="n",,cex=.7)
 
+#home-away contrasts: woodies from Japan to ENA
+spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
+out1 = out[is.element(out$species,spp1),]
+lmer1 = lmer(Asat~homeaway+(1|family/species),data=out1)
+anova(lmer1)
+summary(lmer1)
+  #no change in Asat from home to away
+boxplot(Asat~homeaway,data=out1)
+
+#home-away contrasts, ENA trees to France
+spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
+out2 = out[is.element(out$species,spp2),]
+lmer2 = lmer(Asat~homeaway+(1|species),data=out2) #all species from different families
+anova(lmer2)
+summary(lmer2)
+  #no evidence for shift in Asat for ENA trees to France
+
+#home-away contrasts, ENA herbs to Japan and France
+spp3 = c("Ambrosia artemisiifolia","Bidens frondosa","Conyza canadensis","Erigeron annuus","Solidago gigantea")
+out3 = out[is.element(out$species,spp3),]
+lmer3 = lmer(Asat~homeaway+(1|species),data=out3) #they are all asters
+anova(lmer3)
+summary(lmer3)
+  #no change in Asat
+
+#home-away contrasts, France herbs to Japan and NY
+spp4 = c("Anthoxanthum odoratum","Agrostis stolonifera","Chenopodium album","Daucus carota","Leucanthemum vulgaris","Plantago lanceolata","Artemisia vulgaris")
+out4 = out[is.element(out$species,spp4),]
+lmer4 = lmer(Asat~homeaway+(1|family/species),data=out4)
+summary(lmer4)
+anova(lmer4)
+  #Asat is higher in away range, by 4.5 units (big shift!)
+boxplot(Asat~homeaway,data=out4)
+
 ###Vcmax
 par(mfrow=c(2,1),mar=c(3,3,1,0))
 y = wout$Vcmax.x
@@ -99,8 +133,34 @@ out1 = out[is.element(out$species,spp1),]
 lmer1 = lmer(Vcmax.x~homeaway+(1|family/species),data=out1)
 anova(lmer1)
 summary(lmer1)
-  #!!Vcmax increases in the away range of J to E invasive shrubs, by about 10 units
+  #!Vcmax increases in the away range of J to E invasive shrubs, by about 10 units
 boxplot(Vcmax.x~homeaway,data=out1)
+
+#home-away contrasts, ENA trees to France
+spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
+out2 = out[is.element(out$species,spp2),]
+lmer2 = lmer(Vcmax.x~homeaway+(1|species),data=out2) #all species from different families
+anova(lmer2)
+summary(lmer2)
+  #marginal evidence for decline in Vcmax for ENA trees to France (higher away)
+boxplot(Vcmax.x~homeaway,data=out2)
+
+#home-away contrasts, ENA herbs to Japan and France
+spp3 = c("Ambrosia artemisiifolia","Bidens frondosa","Conyza canadensis","Erigeron annuus","Solidago gigantea")
+out3 = out[is.element(out$species,spp3),]
+lmer3 = lmer(Vcmax.x~homeaway+(1|species),data=out3) #they are all asters
+anova(lmer3)
+summary(lmer3)
+  #no change in Vcmax
+
+#home-away contrasts, France herbs to Japan and NY
+spp4 = c("Anthoxanthum odoratum","Agrostis stolonifera","Chenopodium album","Daucus carota","Leucanthemum vulgaris","Plantago lanceolata","Artemisia vulgaris")
+out4 = out[is.element(out$species,spp4),]
+lmer4 = lmer(Vcmax.x~homeaway+(1|family/species),data=out4)
+summary(lmer4)
+anova(lmer4)
+  #Vcmax is much higher in away range, by 32 units (big shift!)
+boxplot(Vcmax.x~homeaway,data=out4)
 
 
 ###Jmax
@@ -125,6 +185,39 @@ plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,
 legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
 legend(legend="Herbaceous","topright",bty="n",,cex=.7)
 
+#home-away contrasts: woodies from Japan to ENA
+spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
+out1 = out[is.element(out$species,spp1),]
+lmer1 = lmer(Jmax.x~homeaway+(1|family/species),data=out1)
+anova(lmer1)
+summary(lmer1)
+  #no change in Jmax
+
+#home-away contrasts, ENA trees to France
+spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
+out2 = out[is.element(out$species,spp2),]
+lmer2 = lmer(Jmax.x~homeaway+(1|species),data=out2) #all species from different families
+anova(lmer2)
+summary(lmer2)
+  #no evidence for change in Asat for ENA trees to France (higher away)
+
+#home-away contrasts, ENA herbs to Japan and France
+spp3 = c("Ambrosia artemisiifolia","Bidens frondosa","Conyza canadensis","Erigeron annuus","Solidago gigantea")
+out3 = out[is.element(out$species,spp3),]
+lmer3 = lmer(Jmax.x~homeaway+(1|species),data=out3) #they are all asters
+anova(lmer3)
+summary(lmer3)
+  #no change in Jmax
+
+#home-away contrasts, France herbs to Japan and NY
+spp4 = c("Anthoxanthum odoratum","Agrostis stolonifera","Chenopodium album","Daucus carota","Leucanthemum vulgaris","Plantago lanceolata","Artemisia vulgaris")
+out4 = out[is.element(out$species,spp4),]
+lmer4 = lmer(Jmax.x~homeaway+(1|family/species),data=out4)
+summary(lmer4)
+anova(lmer4)
+  #Jmax is much higher in away range, by 39 units (big shift!)
+boxplot(Jmax.x~homeaway,data=out4)
+
 ###alpha
 par(mfrow=c(2,1),mar=c(3,3,1,0))
 y = wout$alpha
@@ -139,7 +232,27 @@ legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(eco
 legend(legend="Woody","topright",bty="n",,cex=.7)
 #no herbaceous
 
-###Rd
+#home-away contrasts: woodies from Japan to ENA
+spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
+out1 = out[is.element(out$species,spp1),]
+lmer1 = lmer(alpha~homeaway+(1|family/species),data=out1)
+anova(lmer1)
+summary(lmer1)
+  #alpha increases in the away range of J to E invasive shrubs, by about 0.03
+boxplot(alpha~homeaway,data=out1)
+
+#home-away contrasts, ENA trees to France
+spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
+out2 = out[is.element(out$species,spp2),]
+lmer2 = lmer(alpha~homeaway+(1|species),data=out2) #all species from different families
+anova(lmer2)
+summary(lmer2)
+  #much higher alpha in home range for trees to France
+boxplot(alpha~homeaway,data=out2)
+
+#(no alpha contrasts for herbs)
+
+###Rd##################################
 par(mfrow=c(2,1),mar=c(3,3,1,0))
 y = wout$Rd.x
 yrange = c(0,3)
@@ -161,54 +274,36 @@ plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,
 legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
 legend(legend="Herbaceous","topright",bty="n",,cex=.7)
 
-
-###################################################
-#compare Amax/Asat calcs (should be smaller for HB)
-plot(dat$Asat,dat$Amax,col=as.numeric(dat$Region)); abline(0,1)
-abline(lsfit(dat$Asat,dat$Amax),lty=2,col="gray")
-summary(lm(Amax~Asat,dat))
-  #R2=.72, slope = .55; HB fit is sig lower than nls
-  #but no extreme outliers
-lmer1 = lmer(Amax~Asat*Region+(1|species),data=dat)
-anova(lmer1)
-  #some differences in relationship based on region, too
-summary(glht(lmer1, linfct = mcp(Region = 'Tukey')))
-  #post hoc Tukey suggests regional difference is between ENA and France
-boxplot(log(dat$Amax/dat$Asat) ~ dat$Region,ylim=c(-1,1))
-  #difference between methods is greater in ENA; curious
-
-###################################################
-#compare alpha/AQY calcs
-plot(dat$alpha,dat$AQY,col=as.numeric(dat$Region),xlim=c(0,.5)); abline(0,1)
-abline(lsfit(dat$alpha,dat$AQY),lty=2,col="gray")
-  #no relationship of AQY and alpha... ?? AQY via nls seems far too low (median = .06; typical is >.2)
-
-plot(out$sppcode[out$region=="E"],out$alpha[out$region=="E"],col="green2",ylim=c(0,.8),las=3)
-par(new=T)
-plot(out$sppcode[out$region=="F"],out$alpha[out$region=="F"],col="blue",ylim=c(0,.8),las=3)
-par(new=T)
-plot(out$sppcode[out$region=="J"],out$alpha[out$region=="J"],col="red2",ylim=c(0,.8),las=3)
-
-plot(out$sppcode[out$region=="E"],out$AQY[out$region=="E"],col="green2",ylim=c(0,.2),las=3)
-par(new=T)
-plot(out$sppcode[out$region=="F"],out$AQY[out$region=="F"],col="blue",ylim=c(0,.2),las=3)
-par(new=T)
-plot(out$sppcode[out$region=="J"],out$AQY[out$region=="J"],col="red2",ylim=c(0,.2),las=3)
-
-
-
-#Amax/Asat comparisons using both methods
-lmer2 = lmer(Amax~Region+(1|species),data=dat)
-summary.aov(lmer2) #no overall regional difference in Amax
-lmer3 = lmer(Amax~homeaway+(1|family/species),data=out,subset=out$region=="E")
-anova(lmer3)
-boxplot(Amax~homeaway,out,subset=out$region=="E")
-
 #home-away contrasts: woodies from Japan to ENA
 spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
 out1 = out[is.element(out$species,spp1),]
-lmer6 = lmer(Amax~homeaway+(1|family/species),data=out1)
-anova(lmer6)
-boxplot(Amax~homeaway,data=out1)
-boxplot(Asat~homeaway,data=out1)
+lmer1 = lmer(Rd.x~homeaway+(1|family/species),data=out1)
+anova(lmer1)
+summary(lmer1)
+  #no change in Rd
+
+#home-away contrasts, ENA trees to France
+spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
+out2 = out[is.element(out$species,spp2),]
+lmer2 = lmer(Rd.x~homeaway+(1|species),data=out2) #all species from different families
+anova(lmer2)
+summary(lmer2)
+  #no change in Rd
+
+#home-away contrasts, ENA herbs to Japan and France
+spp3 = c("Ambrosia artemisiifolia","Bidens frondosa","Conyza canadensis","Erigeron annuus","Solidago gigantea")
+out3 = out[is.element(out$species,spp3),]
+lmer3 = lmer(Rd.x~homeaway+(1|species),data=out3) #they are all asters
+anova(lmer3)
+summary(lmer3)
+  #no change in Rd
+
+#home-away contrasts, France herbs to Japan and NY
+spp4 = c("Anthoxanthum odoratum","Agrostis stolonifera","Chenopodium album","Daucus carota","Leucanthemum vulgaris","Plantago lanceolata","Artemisia vulgaris")
+out4 = out[is.element(out$species,spp4),]
+lmer4 = lmer(Rd.x~homeaway+(1|family/species),data=out4)
+summary(lmer4)
+anova(lmer4)
+  #Rd is marginally higher in home range, by .25 units
+boxplot(Rd.x~homeaway,data=out4)
 
