@@ -182,9 +182,9 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   ##HB via JAGS, all species, combined A-Ci and A-q curves (similar structure to Heberling & Fridley
     #but with ind effects nested within species)
 
-  spp1 = "Lonicera canadensis"
-  spp2 = "Euonymus alatus"
-  df = dat[dat$species==spp1|dat$species==spp2,]
+  #spp1 = "Lonicera canadensis"
+  #spp2 = "Euonymus alatus"
+  #df = dat[dat$species==spp1|dat$species==spp2,]
   df = dat
   df = df[df$Ci>=0,]
   N = dim(df)[1]
@@ -291,9 +291,9 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   #run JAGS model
   jags.p <- jags(model = "model.txt",data = input,inits=inits,param=params,
                  n.chains = 3, #number of separate MCMC chains
-                 n.iter =100, #number of iterations per chain
+                 n.iter =10000, #number of iterations per chain
                  n.thin=3, #thinning
-                 n.burnin = 20) #number of initial iterations to discard
+                 n.burnin = 4000) #number of initial iterations to discard
   
   jags.p
   
@@ -320,10 +320,10 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   #ind.out = summaryBy(filename~filename+ID+date+site+species+sppcode,df)
   ind.out = summaryBy(ID~ID+date+site+species+sppcode,df)
   ind.out = ind.out[,-6]
-  ind.out = cbind(ind.out,data.frame(Asat=apply(Asat,2,mean),Vcmax=apply(Vcm.out,2,mean),Jmax=apply(Jm.out,2,mean),Rd=apply(Rd.int,2,median),alpha=apply(alpha.out,2,mean), Asat.se=apply(Asat,2,sd), Vcmax.se=apply(Vcm.out,2,sd),Jmax.se=apply(Jm.out,2,sd),Rd.se=apply(Rd.int,2,sd),alpha.se=apply(alpha.out,2,sd)))
+  ind.out = cbind(ind.out,data.frame(Citr=apply(Citr,2,mean),Asat=apply(Asat,2,mean),Vcmax=apply(Vcm.out,2,mean),Jmax=apply(Jm.out,2,mean),Rd=apply(Rd.int,2,median),alpha=apply(alpha.out,2,mean),Citr.se=apply(Citr,2,sd),Asat.se=apply(Asat,2,sd), Vcmax.se=apply(Vcm.out,2,sd),Jmax.se=apply(Jm.out,2,sd),Rd.se=apply(Rd.int,2,sd),alpha.se=apply(alpha.out,2,sd)))
   
   #same as csv file
-  #write.csv(ind.out,"indoutHB3.csv")
+  #write.csv(ind.out,"indoutHB4.csv")
 
   #combine with ecophys derived A-Ci dataset
   #epset = read.csv("photo_params_ecophys.csv")
