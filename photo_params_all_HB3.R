@@ -186,7 +186,7 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   spp1 = "Lonicera canadensis"
   spp2 = "Euonymus alatus"
   df = dat[dat$species==spp1|dat$species==spp2,]
-  df = dat
+  #df = dat
   df = df[df$Ci>=0,]
   N = dim(df)[1]
   #ind = as.numeric(as.factor(df$filename)) #grouping vector (individual)
@@ -265,7 +265,8 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
         alpha.out[i] <- alpha.int + b0.ind.alpha[i]
         #calculate Asat at 40 Ci_Pa and saturating light
         Asat[i] <-min(((Jm.out[i]*(40-4.275))/((4*40)+(8*4.275))),Vcm.out[i]*(40-4.275)/(40+(40.49*(1+(O/27.84))))) 
-
+        #calculate Ac-Aj Ci transition point (value of Ci_Pa of equal limitation by Rubisco and RUBP)
+        Citr[i] <- ((Vcm.out[i]/Jm.out[i])*8*GammaStar[i] - (Kc[i]*(1+(O[i]/Ko[i])))) / (1-(4*(Vcm.out[i]/Jm.out[i])))
       }  
 
     #random intercept for species effects
@@ -284,16 +285,16 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   write(mod.photo, "model.txt")
   
   #input lists for JAGS
-  params = c("Asat","Vcm.out","Jm.out","alpha.out","Rd.int","sigma","Vcm.spp","Jm.spp","alpha.spp","Vcmax.int","Jmax.int","alpha.int") #parameters to monitor
+  params = c("Asat","Vcm.out","Jm.out","alpha.out","Rd.int","Citr","sigma","Vcm.spp","Jm.spp","alpha.spp","Vcmax.int","Jmax.int","alpha.int") #parameters to monitor
   inits = function() list(Vcmax.int=rnorm(1,100,10),Jmax.int=rnorm(1,75,10),alpha.int=runif(1),Rd.int=rnorm(N.indiv)) #starting values of fitted parameters
   input = list(N=N,Anet=df$Photo,Ci_Pa=df$Ci_Pa,q=df$PARi,GammaStar=df$GammaStar,Kc=dat$Kc,Ko=dat$Ko,O=df$O,ind=ind,N.indiv=N.indiv,ind.spp=ind.spp,N.spp=N.spp) #input data
   
   #run JAGS model
   jags.p <- jags(model = "model.txt",data = input,inits=inits,param=params,
                  n.chains = 3, #number of separate MCMC chains
-                 n.iter =10000, #number of iterations per chain
+                 n.iter =100, #number of iterations per chain
                  n.thin=3, #thinning
-                 n.burnin = 2000) #number of initial iterations to discard
+                 n.burnin = 20) #number of initial iterations to discard
   
   jags.p
   
@@ -333,7 +334,7 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   #write.csv(out,"photo_params_HBandEcoPhys.csv")
     #'x' values are ecophys derived, 'y' values are HB derived
 
-  out = read.csv("photo_params_HBandEcoPhys.csv") #load in dataset with ecophys and former HB (A-Ci only) values
+  out = read.csv(paste0(dfold,"photo_params_HBandEcoPhys.csv")) #load in dataset with ecophys and former HB (A-Ci only) values
   
   test = merge(out,ind.out,by.x="ID",by.y="ID")
   #Vcmax and Jmax values using A-Ci only ('y' vars) in HB vs. using A-Ci and A-q HB curves (as above)
