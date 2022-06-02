@@ -6,6 +6,7 @@
 library(lme4)
 library(lmerTest)
 library(multcomp)
+library(lsmeans)
 
 dfold = "/Users/etudiant/Documents/IOS_git/IOS_data/"
 
@@ -104,6 +105,11 @@ summary(lmer4)
 anova(lmer4)
   #Asat is higher in away range, by 4.5 units (big shift!)
 boxplot(Asat~homeaway,data=out4)
+boxplot(Asat~region,data=out4)
+lmer4b = lmer(Asat~region+(1|family/species),data=out4)
+lsmeans(lmer4b,pairwise~region) 
+  #sig difference is between France and Japan, although effect size is the same for Japan and ENA difference with France
+glht(lmer4b,linfct=mcp(region="Tukey"))
 
 ###Vcmax
 par(mfrow=c(2,1),mar=c(3,3,1,0))
@@ -240,6 +246,8 @@ anova(lmer1)
 summary(lmer1)
   #alpha increases in the away range of J to E invasive shrubs, by about 0.03
 boxplot(alpha~homeaway,data=out1)
+boxplot(alpha~region,data=out1)
+lsmeans(lmer4b,pairwise~region) 
 
 #home-away contrasts, ENA trees to France
 spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
@@ -249,6 +257,8 @@ anova(lmer2)
 summary(lmer2)
   #much higher alpha in home range for trees to France
 boxplot(alpha~homeaway,data=out2)
+lmer2b = lmer(alpha~region+(1|species),data=out2) #all species from different families
+boxplot(alpha~region,data=out2)
 
 #(no alpha contrasts for herbs)
 
