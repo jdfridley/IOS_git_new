@@ -321,6 +321,62 @@ anova(lmer4)
   #Rd is marginally higher in home range, by .25 units
 boxplot(Rd.x~homeaway,data=out4)
 
+
+###Jmax over Vcmax, should be about 1.6 ################################## 
+par(mfrow=c(2,1),mar=c(3,4,1,1))
+y = wout$Jmax.x / wout$Vcmax.x
+yrange = c(0,3)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
+mtext("Jmax/Vcmax",side=2,line=2.5,cex=1.5)
+par(new=T)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
+par(new=T)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=18,y=max(yrange),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
+y = hout$Jmax.x / hout$Vcmax.x
+plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Jmax/Vcmax",side=2,line=2.5,cex=1.5)
+par(new=T)
+plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+par(new=T)
+plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Herbaceous",side=3,line=-1)
+
+#home-away contrasts: woodies from Japan to ENA
+spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
+out1 = out[is.element(out$species,spp1),]
+lmer1 = lmer(I(Jmax.x/Vcmax.x)~homeaway+(1|family/species),data=out1)
+anova(lmer1)
+summary(lmer1)
+  #significant decrease in Jmax/Vcmax ratio from home (Japan) to away (ENA)
+
+#home-away contrasts, ENA trees to France
+spp2 = c("Prunus serotina","Quercus rubra","Parthenocissus sp.","Robinia pseudo-acacia","Acer negundo")
+out2 = out[is.element(out$species,spp2),]
+lmer2 = lmer(I(Jmax.x/Vcmax.x)~homeaway+(1|species),data=out2) #all species from different families
+anova(lmer2)
+summary(lmer2)
+  #significant decrease in Jmax/Vcmax ratio from home (ENA) to away (France)
+
+#home-away contrasts, ENA herbs to Japan and France
+spp3 = c("Ambrosia artemisiifolia","Bidens frondosa","Conyza canadensis","Erigeron annuus","Solidago gigantea")
+out3 = out[is.element(out$species,spp3),]
+lmer3 = lmer(I(Jmax.x/Vcmax.x)~homeaway+(1|species),data=out3) #they are all asters
+anova(lmer3)
+summary(lmer3)
+  #no change in Jmax/Vcmax ratio from herbs from ENA to Japan and France
+
+#home-away contrasts, France herbs to Japan and NY
+spp4 = c("Anthoxanthum odoratum","Agrostis stolonifera","Chenopodium album","Daucus carota","Leucanthemum vulgaris","Plantago lanceolata","Artemisia vulgaris")
+out4 = out[is.element(out$species,spp4),]
+lmer4 = lmer(I(Jmax.x/Vcmax.x)~homeaway+(1|family/species),data=out4)
+summary(lmer4)
+anova(lmer4)
+  #no change in Jmax/Vcmax ratio from herbs from France to Japan and ENA
+
+
+
 ###Citr##################################  needs work!
 par(mfrow=c(2,1),mar=c(3,4,1,1))
 y = wout$Citr
