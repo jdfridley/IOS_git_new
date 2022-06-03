@@ -10,7 +10,7 @@ library(lsmeans)
 
 dfold = "/Users/etudiant/Documents/IOS_git/IOS_data/"
 
-hb = read.csv(paste0(dfold,"indoutHB3.csv"))
+hb = read.csv(paste0(dfold,"indoutHB4.csv"))
 str(hb)
 nls = read.csv(paste0(dfold,"lightcurves_nls_output.csv"))
 str(nls)
@@ -51,26 +51,25 @@ jcol = makeTransparent("red2")
 inv = rgb(0,0,0,alpha=0,max=255) #invisible
 
 ###Asat
-par(mfrow=c(2,1),mar=c(3,3,1,0))
+par(mfrow=c(2,1),mar=c(3,4,1,1))
 y = wout$Asat
 yrange = c(0,60)
-plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
 mtext("Asat",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
 par(new=T)
-plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Woody","topright",bty="n",,cex=.7)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=-1,y=max(yrange),bty="n",,cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
 y = hout$Asat
-plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 mtext("Asat",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 par(new=T)
-plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Herbaceous","topright",bty="n",,cex=.7)
+plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Herbaceous",side=3,line=-1)
 
 #home-away contrasts: woodies from Japan to ENA
 spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
@@ -111,27 +110,27 @@ lsmeans(lmer4b,pairwise~region)
   #sig difference is between France and Japan, although effect size is the same for Japan and ENA difference with France
 glht(lmer4b,linfct=mcp(region="Tukey"))
 
-###Vcmax
-par(mfrow=c(2,1),mar=c(3,3,1,0))
+
+###Vcmax##############################################
+par(mfrow=c(2,1),mar=c(3,4,1,1))
 y = wout$Vcmax.x
 yrange = c(0,300)
-plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
 mtext("Vcmax",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
 par(new=T)
-plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Woody","topright",bty="n",,cex=.7)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=-1,y=max(yrange),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
 y = hout$Vcmax.x
-plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 mtext("Vcmax",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 par(new=T)
-plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Herbaceous","topright",bty="n",,cex=.7)
+plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Herbaceous",side=3,line=-1)
 
 #home-away contrasts: woodies from Japan to ENA
 spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
@@ -148,7 +147,7 @@ out2 = out[is.element(out$species,spp2),]
 lmer2 = lmer(Vcmax.x~homeaway+(1|species),data=out2) #all species from different families
 anova(lmer2)
 summary(lmer2)
-  #marginal evidence for decline in Vcmax for ENA trees to France (higher away)
+  #marginal evidence for decline in Vcmax for ENA trees to France (higher home)
 boxplot(Vcmax.x~homeaway,data=out2)
 
 #home-away contrasts, ENA herbs to Japan and France
@@ -167,29 +166,31 @@ summary(lmer4)
 anova(lmer4)
   #Vcmax is much higher in away range, by 32 units (big shift!)
 boxplot(Vcmax.x~homeaway,data=out4)
+lmer4b = lmer(Vcmax.x~region+(1|family/species),data=out4)
+lsmeans(lmer4b,pairwise~region) 
 
 
-###Jmax
-par(mfrow=c(2,1),mar=c(3,3,1,0))
+###Jmax########################################################
+par(mfrow=c(2,1),mar=c(3,4,1,1))
 y = wout$Jmax.x
 yrange = c(0,350)
-plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
 mtext("Jmax",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
 par(new=T)
-plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Woody","topright",bty="n",,cex=.7)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=-1,y=max(yrange),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
 y = hout$Jmax.x
-plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 mtext("Jmax",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 par(new=T)
-plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Herbaceous","topright",bty="n",,cex=.7)
+plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Herbaceous",side=3,line=-1)
+
 
 #home-away contrasts: woodies from Japan to ENA
 spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
@@ -205,7 +206,7 @@ out2 = out[is.element(out$species,spp2),]
 lmer2 = lmer(Jmax.x~homeaway+(1|species),data=out2) #all species from different families
 anova(lmer2)
 summary(lmer2)
-  #no evidence for change in Asat for ENA trees to France (higher away)
+  #no evidence for change in Asat for ENA trees to France 
 
 #home-away contrasts, ENA herbs to Japan and France
 spp3 = c("Ambrosia artemisiifolia","Bidens frondosa","Conyza canadensis","Erigeron annuus","Solidago gigantea")
@@ -223,19 +224,22 @@ summary(lmer4)
 anova(lmer4)
   #Jmax is much higher in away range, by 39 units (big shift!)
 boxplot(Jmax.x~homeaway,data=out4)
+lmer4b = lmer(Jmax.x~region+(1|family/species),data=out4)
+lsmeans(lmer4b,pairwise~region) 
 
-###alpha
-par(mfrow=c(2,1),mar=c(3,3,1,0))
+
+###alpha#############################
+par(mfrow=c(2,1),mar=c(3,4,1,1))
 y = wout$alpha
 yrange = c(0,.8)
-plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
 mtext("alpha",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
 par(new=T)
-plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Woody","topright",bty="n",,cex=.7)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=18,y=max(yrange),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
 #no herbaceous
 
 #home-away contrasts: woodies from Japan to ENA
@@ -263,26 +267,26 @@ boxplot(alpha~region,data=out2)
 #(no alpha contrasts for herbs)
 
 ###Rd##################################
-par(mfrow=c(2,1),mar=c(3,3,1,0))
+par(mfrow=c(2,1),mar=c(3,4,1,1))
 y = wout$Rd.x
 yrange = c(0,3)
-plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
 mtext("Rd",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
 par(new=T)
-plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Woody","topright",bty="n",,cex=.7)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=18,y=max(yrange),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
 y = hout$Rd.x
-plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 mtext("Rd",side=2,line=2.5,cex=1.5)
 par(new=T)
-plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
+plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
 par(new=T)
-plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv)
-legend(legend=c("ENA","France","Japan"),"topleft",bty="n",,cex=.5,text.col=c(ecol,fcol,jcol))
-legend(legend="Herbaceous","topright",bty="n",,cex=.7)
+plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Herbaceous",side=3,line=-1)
+
 
 #home-away contrasts: woodies from Japan to ENA
 spp1 = c("Berberis thunbergii","Celastrus orbiculatus","Euonymus alatus","Lonicera japonica","Lonicera morrowii","Rosa multiflora","Viburnum dilatatum")
@@ -316,4 +320,26 @@ summary(lmer4)
 anova(lmer4)
   #Rd is marginally higher in home range, by .25 units
 boxplot(Rd.x~homeaway,data=out4)
+
+###Citr##################################  needs work!
+par(mfrow=c(2,1),mar=c(3,4,1,1))
+y = wout$Citr
+yrange = c(0,100)
+plot(wout$sppcode[wout$region=="E"],y[wout$region=="E"],border=ecol,ylim=yrange,las=3,col=inv,ylab="")
+mtext("Rd",side=2,line=2.5,cex=1.5)
+par(new=T)
+plot(wout$sppcode[wout$region=="F"],y[wout$region=="F"],border=fcol,ylim=yrange,las=3,col=inv,ylab="")
+par(new=T)
+plot(wout$sppcode[wout$region=="J"],y[wout$region=="J"],border=jcol,ylim=yrange,las=3,col=inv,ylab="")
+legend(legend=c("ENA","France","Japan"),x=18,y=max(yrange),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"))
+mtext("Woody",side=3,line=-1)
+y = hout$Citr
+plot(hout$sppcode[hout$region=="E"],y[hout$region=="E"],border=ecol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Rd",side=2,line=2.5,cex=1.5)
+par(new=T)
+plot(hout$sppcode[hout$region=="F"],y[hout$region=="F"],border=fcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+par(new=T)
+plot(hout$sppcode[hout$region=="J"],y[hout$region=="J"],border=jcol,ylim=yrange,las=3,cex.axis=.8,col=inv,ylab="")
+mtext("Herbaceous",side=3,line=-1)
+
 
