@@ -100,19 +100,23 @@ N = 100
 Ci.vec = seq(0,40,length=N)
 q.vec = seq(0,2000,length=N)
 out = matrix(0,nrow=N*N,ncol=7)
-Vcmax = 150
-Jmax = 250
-alpha = .5
+out2 = matrix(0,nrow=N,ncol=N)
+Vcmax = 100
+Jmax = 300
+alpha = .45
 nx = 1
 for(i in 1:N) {
-  for(j in 1:N) {
-    Ci = Ci.vec[i]; q = q.vec[j]
+  Ci = Ci.vec[i]
+    for(j in 1:N) {
+    q = q.vec[j]
     Ac1 = Ac(Vcmax=300,Ci=Ci,Gs,Kc,Ko,O)            #Ac at ambient CO2 but high Vcmax
     Ac2 = Ac(Vcmax=Vcmax,Ci=40,Gs,Kc,Ko,O)          #Ac at Vcmax but max CO2 
-    Aj1 = Aj(alpha=alpha,Jmax=Jmax,q=q,Gs,Ci=Ci)    #Aj at ambient conditions
-    Aj2 = Aj(alpha=alpha,Jmax=Jmax,q=2000,Gs,Ci=Ci) #Aj at ambient CO2 but max light (alpha irrelevant)
-    Aj3 = Aj(alpha=.8,Jmax=Jmax,q=q,Gs,Ci=Ci)       #Aj at ambient CO2 but max alpha (=.8)
+    Aj1 = Aj(alpha=alpha,Jmax=Jmax,q=q,Gs=Gs,Ci=Ci)    #Aj at ambient conditions
+    Aj2 = Aj(alpha=.8,Jmax=Jmax,q=2000,Gs=Gs,Ci=Ci) #Aj at ambient CO2 but max light (alpha irrelevant)
+    Aj3 = Aj(alpha=.8,Jmax=Jmax,q=q,Gs=Gs,Ci=Ci)       #Aj at ambient CO2 but max alpha (=.8)
     out[nx,] = c(Ci,q,Ac1,Ac2,Aj1,Aj2,Aj3)
+    x = c(Ac1,Ac2,Aj1,Aj2,Aj3)
+    out2[j,i] = which(x==min(x))[1]
     nx = nx + 1
   }    
 }    
@@ -120,19 +124,21 @@ minout = unlist(apply(out[,3:7],1,function(x)which(x==min(x))))
 hist(minout)
 
 #plot
-cols = c("red2","red4","palegreen1","springgreen4","darkgreen")
+#cols = c("red2","red4","palegreen1","springgreen4","darkgreen")
+#plot(out[,2],out[,1],type="n",)
+#points(out[,2],out[,1],col=cols[minout],pch=19)
 
-plot(out[,2],out[,1],type="n",)
-points(out[,2],out[,1],col=cols[minout],pch=19)
+image(out2,col=rainbow(5,alpha=1)) #same plot, numbers are light to dark
+legend(legend=c(1:5),text.col=rainbow(5,alpha=1),"topleft")
     
   #interpretation on which of the above are the minimum:
-  #Ac1: (red): Anet limited by CO2 (would increase at higher CO2)
-  #Ac2: (darkred): Anet limited by Rubisco content (increase in CO2 would not change Anet)
-  #Aj1 (palegreen): Anet limited by chl content (if alpha higher, Anet increases at same q)
-  #Aj2 (medium green): Anet limited by Jmax (photons cannot get higher, alpha irrelevant at q=2000)
-  #Aj3 (darkgreen): Anet limited by photons (alpha at max)
+  #Ac1: 1 Anet limited by CO2 (would increase at higher CO2)
+  #Ac2: 2 Anet limited by Rubisco content (increase in CO2 would not change Anet)
+  #Aj1: 3 Anet limited by chl content (if alpha higher, Anet increases at same q)
+  #Aj2: 4 Anet limited by Jmax (photons cannot get higher, alpha irrelevant at q=2000)
+  #Aj3: 5 Anet limited by photons (alpha at max)
 
-
+#something is messed up in assumptions of limiting factors... '4' dominates if Jmax increases ???
 
 
 
