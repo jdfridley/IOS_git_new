@@ -122,6 +122,34 @@ The methods are equal, suggesting confidence in Nl estimates, and they vary wide
 boxplot(Nl.Taka~woody,dat,col=c("darkgreen","blue"),ylim=c(0,.6))
 ```  
 
-##
+## N in bioenergetics (Nb)
+
+Most authors calculate Nb in some way from Jmax. For example, Takashima et al. (2004) calculated Nb from Jmax measured from leaf samples at 25C, assuming that the ratio of Jmax to the cytochrome f content is 156 mmol mol-1 s-1 and that the N in bioenergetics per unit cytochrome f is 9.53 mol mmol-1 (see Hikosaka & Terashima 1995). Nb can thus be calculated as:
+
+Nb (Takashima) = (Jmax/1000) * (9.53/156) * (SLA/10000) * 14 * (1/Nmass)
+
+where Jmax is measured in umol e- m-2 s-2, SLA is cm2 g-1, and 14 converts mol N to g N. 
+
+Niinemets & Tenhunen (1997) is similar but more general because constants include temperature dependencies of J:
+
+Nb (N&T '97) = Jmax * (SLA/10000) * (1/Nmass) * (1/14) * (1/(8.06*Jmc))
+
+where Jmc is the specific activity of electron transport in umol e- per umol cytochrome f s-1 and depends on leaf temperature; Fig. A2 in N&T '97 shows that Jmc varies between 150 and 200 from 25 to 30C. 
+
+
+```{r}
+dat$Nb.Taka = dat$Jmax*(9.53/156)*(dat$SLA/10000)*14*(1/dat$Nmass)/1000
+hist(dat$Nb.Taka[dat$Nb.Taka<1])
+summary(dat$Nb.Taka)
+```
+
+Here Nb is derived solely from Jmax and assumptions about N content of bioenergetic proteins, but values centered are 10% are not unreasonable. We can now compare Nl and Nb and confirm the expectations that 1) Nl is generally larger (Takashima et al. 2004) and 2) allocation to Nl is skewed high for shade plants (here, woodies).
+
+```{r}
+par(mfrow=c(1,1),mar=c(5,5,1,1))
+plot(dat$Nl.Taka,dat$Nb.Taka,col=c(c1,c2)[dat$woody+1],pch=19,xlim=c(0,.5),ylim=c(0,.5),xlab="N light harvest",ylab="N bioenergetics")
+legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blue"),"topleft")
+abline(0,1)
+```
 
 
