@@ -1,0 +1,69 @@
+---
+title: "N allocation analysis"
+author: "Jason Fridley"
+date: "6/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Dataset
+
+The dataset (dat) is the merged output of the Bayesian photosynthesis model (from the script 'photo_params_all_HB4.R', including posterior means and SDs of Asat (A at 40 Pa and saturating light), Vcmax, Jmax, alpha, and Rd) and lab assay results in the master Google Docs spreadsheet (currently version 5), plus a separate csv file of associated covariates for each sample (nativity, range, growth form).
+
+```{r}
+dfold = "/Users/etudiant/Documents/IOS_git/IOS_data/"
+hb = read.csv(paste0(dfold,"indoutHB4.csv"))
+master = read.csv(paste0(dfold,"NSF-IOSspreadsheetJDF5.csv"))
+dat = merge(hb,master,by.x="ID",by.y="ID",all=T)
+dat$region = as.factor(substr((dat$Region),1,1))
+covar = read.csv(paste0(dfold,"covariates.csv")) #covariates at the species-region level
+dat = merge(dat,covar,by.x=c("species","region"),by.y=c("species","region"),all.x=T)
+```
+
+## Leaf N pools
+
+We are interested in 5 pools of leaf N:
+1. Nr = N in Rubisco
+2. Nl = N allocated to light harvesting (Chl, corrected by 'Cb', a binding coefficient that describes the efficiency at which Nl contributes to light energy capture; Niinemets & Tenhunen 1997)
+3. Nb = N allocated to bioenergetics associated with electron transfer proteins
+4. Nc = N associated with cell wall proteins
+5. Nd = N associated with defensive secondary metabolites, esp. cyanogenic glycosides and alkaloids
+
+We expect the sum of these 5 pools to be less than total leaf N, because there are residual unmeasured pools (organic acids, inorganic N). 
+
+### N in Rubisco (Nr)
+
+Evans (1989) reported that leaf N allocation to Rubisco varies from 5-30%, although increasing with leaf N content. To calculate Nr in our data, we note that measurements were from leaf discs and thus area based (ug cm-2), which can be transformed to mass based (g-1) by multiplying by SLA. Rubisco is 16% N, so ug N in Rubisco per g leaf is calculated by dividing Rubisco by 16. To calculate allocation (Nr = Rubisco N / leaf N), we divide by 10^6 to conver to g, and divide by g leaf N:
+
+```{r}
+dat$Rub.g = as.numeric((dat$Rubisco.content)) * as.numeric(as.character(dat$Specific.leaf.area))  #ug Rubisco per g leaf
+dat$RubN = dat$Rub.g / 16 #ug N in Rubisco per g leaf
+dat$Rub.perc = (dat$RubN / 1000000) / (as.numeric(as.character(dat$leafN))/100) #Rubisco g per g leaf N
+hist(dat$Rub.perc)
+summary(dat$Rub.perc) #just a few outliers; median is 12%
+
+```
+
+
+dat$Rub.g = as.numeric((dat$Rubisco.content)) * as.numeric(as.character(dat$Specific.leaf.area))  #ug Rubisco per g leaf
+dat$RubN = dat$Rub.g / 16 #ug N in Rubisco per g leaf
+dat$Rub.perc = (dat$RubN / 1000000) / (as.numeric(as.character(dat$leafN))/100) #Rubisco g per g leaf N
+hist(dat$Rub.perc)
+summary(dat$Rub.perc) #just a few outliers; median is 12%
+
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+dat$GLI = as.numeric(as.character(dat$GLI.128))
+dat$GLI[dat$GLI==1] = 100```
+
+## Including Plots
+
+```
+
