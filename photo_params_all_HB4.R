@@ -26,7 +26,7 @@ library(googlesheets4)
 #### Dataset: on OneDrive
 
 #master = read_sheet("https://docs.google.com/spreadsheets/d/1QLL5AUeP-fHar0HRfDjDP0Mw25FvowqidiCyEbBA5og/edit#gid=0")
-master = read.csv(paste0(dfold,"NSF-IOSspreadsheetJDF4.csv"))
+master = read.csv(paste0(dfold,"NSF-IOSspreadsheetJDF5.csv"))
 #dat = read.csv("/Users/fridley/Documents/academic/projects/IOS_FranceJapan/licor_files/all_licor_data2.csv")
 dat = read.csv(paste0(dfold,"all_licor_data2.csv"))
   #version 2 is the same as v1, with one licor file (Fallopia F7) added
@@ -118,6 +118,10 @@ dat$ID[dat$filename=="2021-09-13-bifro-dewitt.xlsx"] = "bifro-E37-1" #fix typo
   plot(dat$Date[dat$region=="F"],dat$Tleaf[dat$region=="F"])
     #25C temps used in summer 2020 in France, presumably when necessary to reduce VPD due to very dry conditions
     
+  #examine on a per sample basis
+  temp.ID = tapply(dat$Tleaf,dat$ID,function(x)median(x,na.rm=T))
+  #write.csv(round(temp.ID,1),file="leaftempsbyID.csv")
+  
   #ignoring TBlk, CO2R, CO2S, H2OR, H2OS, RH_R, RH_S
     
   #Flow rate
