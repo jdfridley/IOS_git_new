@@ -12,8 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## TO DO:
-Need temperature corrections for Jmc, Vmc.
 Need leaf punch area for samples used to create cell wall pellets to calculate Nc.
+Need defensive chemistry data to calculate Nd.
+Need to do remaining calculations mentioned in proposl (see notes 6-8-22).
+Put all in HB model.
 
 ## Dataset
 
@@ -27,6 +29,9 @@ dat = merge(hb,master,by.x="ID",by.y="ID",all=T)
 dat$region = as.factor(substr((dat$Region),1,1))
 covar = read.csv(paste0(dfold,"covariates.csv")) #covariates at the species-region level
 dat = merge(dat,covar,by.x=c("species","region"),by.y=c("species","region"),all.x=T)
+temp.dat = read.csv(paste0(dfold,"leaftempsbyID.csv")) #file of median leaf temps per sample
+names(temp.dat) = c("ID","Tleaf")
+dat = merge(dat,temp.dat,by.x="ID",by.y="ID",all.x=T) #merge leaf temps with dataset
 ```
 
 ## Colors for plotting
@@ -138,7 +143,7 @@ Niinemets & Tenhunen (1997) is similar but more general because constants includ
 
 Nb (N&T '97) = Jmax * (SLA/10000) * (1/Nmass) * (1/(8.06*Jmc))
 
-where Jmc is the specific activity of electron transport in umol e- per umol cytochrome f s-1 and depends on leaf temperature; Fig. A2 in N&T '97 shows that Jmc varies between 150 and 200 from 25 to 30C and declines thereafter. The equation for temperature specificity (same as for Vmc) given by N&T is:
+where Jmc is the specific activity of electron transport in umol e- per umol cytochrome f s-1 and depends on leaf temperature; Fig. A2 in N&T '97 shows that Jmc varies between 150 and 200 from 25 to 35C and declines thereafter. The equation for temperature specificity (same as for Vmc) given by N&T is:
 
 Jmc = exp(c-(dHa/(R*Tk))) / (1+ exp((dS*T-dHd)/R*Tk) )
 
@@ -157,16 +162,17 @@ Jmc.temp(c=14.77, dHa=24100, dHd=564150, dS=1810, R=8.314, Tk=30+273.15)
   #value at 30C should be 182
 ```
 
-Results are consistent with N&T and Takashima. Note some of the leaf temperatures in our study were taken at 30C, and so need a value of 182 in the Takashima equation.
-
-********add leaf T values to dataset
+Results are consistent with N&T and Takashima. Note the leaf temperatures in our study were mostly taken at 30 C but vary between 25 and 33 or so, so we can vary Jmc with temp as appropriate.
 
 ```{r}
-#assuming that all measurements taken at 25C (need to correct for some values)
-dat$Nb.Taka = dat$Jmax*(9.53/156)*(dat$SLA/10000)*14*(1/dat$Nmass)/1000
+summary(dat$Tleaf) #31 NAs, assume 30C
+dat$Tleaf[is.na(dat$Tleaf)] = 30
+dat$Jmc = Jmc.temp(c=14.77, dHa=24100, dHd=564150, dS=1810, R=8.314, Tk=dat$Tleaf+273.15)
+hist(dat$Jmc)
+dat$Nb.Taka = dat$Jmax*(9.53/dat$Jmc)*(dat$SLA/10000)*14*(1/dat$Nmass)/1000
 hist(dat$Nb.Taka[dat$Nb.Taka<1])
 summary(dat$Nb.Taka) #average of 10%
-dat$Nb.NT = dat$Jmax * (dat$SLA/10000) * (1/dat$Nmass) * (1/(8.06*156))
+dat$Nb.NT = dat$Jmax * (dat$SLA/10000) * (1/dat$Nmass) * (1/(8.06*dat$Jmc))
 hist(dat$Nb.NT[dat$Nb.NT<1])
 summary(dat$Nb.NT) #average of 10%
 par(mfrow=c(1,1),mar=c(5,5,1,1))
@@ -204,4 +210,17 @@ summary(dat$wallN) #mean is just under 1%, surprisingly high
 ### N in defensive chemistry (Nd)
 
 Waiting on data.
+
+
+### alpha vs. chl
+
+#from N&T '97
+```{r}
+dat$LMA = 1/(dat$SLA/10000) #dry mass per unit area in g m-2
+alpha.pred = .292 * ((1 +(.076/(dat$chl.mmolg*dat$LMA)))^(-1))
+plot(alpha.pred,dat$alpha,ylim=c(0,1)); abline(0,1)
+hist(dat$alpha[dat$alpha<1])
+summary(lm(dat$alpha~alpha.pred,subset=dat$alpha<1))
+  #quite a terrible relationship!
+```
 
