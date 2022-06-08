@@ -86,7 +86,7 @@ Nl = chl / (Nmass * Cb)
 
 where chl is leaf chl concentration in mmol g-1, Nmass is leaf N (g g-1), and Cb is a 'chl binding' coefficient (mmol chl per g N) that--I think--suggests some N in chloroplasts does not actually contribute to light capture; in Acer saccharum values of Cb are between 2 and 2.5. 
 
-Takashima et al. (2004) assume that Nl is calculated based on a ratio of 37.1 mol Nl per mol chl. Note large difference in estimated Nl for maple in Niinemets & Tenhunen (1997) (20-60%) vs. oaks in Takashima (10%).
+Takashima et al. (2004) assume that Nl is calculated based on a ratio of 37.1 mol Nl per mol chl, which is equivalent to Niinemets & Tenhunen (1997) for Nl under the assumption that Cb=1.93 (based on empirical relationship below). Note large difference in estimated Nl for maple in Niinemets & Tenhunen (1997) (20-60%) vs. oaks in Takashima (10%).
 
 We can first examine the distribution of leaf chl content. Our measurements were based on leaf discs, and so can be converted from ug chl per cm2 to ug chl per g; assuming chl is 6.27% of chl on a mass basis (chlA = C55 H72 O5 N4 Mg, mol weight of 893.5 g/mol) we can convert to chl N. 
 
@@ -101,24 +101,27 @@ hist(dat$Chl.perc[dat$Chl.perc<.1])
 summary(dat$Chl.perc)
 ```
 
-Chl content values closely match Evans 1989, and conversion to N in Chl shows a range of .01-.05 with a median of 1.4%, reasonably close to Evans' (1989) prediction. To convert to Nl, we can use either the Niinemets & Tenhunen (1997) or Takashima et al. (2004) approach:
+Chl content values closely match Evans 1989, and conversion to N in Chl shows a range of .01-.05 with a median of 1.4%, reasonably close to Evans' (1989) prediction. To convert to Nl, we can use either the Niinemets & Tenhunen (1997) or Takashima et al. (2004) approach, which are (nearly) equivalent if Cb=2 is assumed.
 
 ```{r fig.width=8, fig.height=4}
 dat$chl.mmolg = dat$chl.mmolm2*dat$SLA/10000 #mmol chl per g leaf
-dat$Nl.NT = dat$chl.mmolg / (dat$Nmass*2.3) #N&T '97 approach, assuming Cb is 2.3
+dat$Nl.NT = dat$chl.mmolg / (dat$Nmass*1.93) #N&T '97 approach, assuming Cb is 1.93
 hist(dat$Nl.NT[dat$Nl.NT<1])
   #majority between 5-30%, good correspondence to A. saccharum in N&T '97
-dat$Nl.Taka = (dat$chl.mmolg * 37.1 / 1000) * 14 #Takashima et al. 2004 approach
-hist(dat$Nl.Taka[dat$Nl.Taka<.4]*10) #most between 2-5%, median is 3%, somewhat lower than oaks in Takashima (~10%)
+dat$Nl.Taka = (dat$chl.mmolg * 37.1 / 1000) * 14 * (1/dat$Nmass)
+hist(dat$Nl.Taka[dat$Nl.Taka<.4]) #mirrors N&T '97
 summary(dat$Nl.Taka)
-par(mfrow=c(1,2),mar=c(5,5,1,1))
-plot(dat$Nl.Taka,dat$Nl.NT,col=c(c1,c2)[dat$woody+1],pch=19,ylim=c(0,.45),xlim=c(0,.2),xlab="Nl, Takashima",ylab="Nl, Niinemets")
-legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blue"),"bottomright")
+par(mfrow=c(1,1),mar=c(5,5,1,1))
+plot(dat$Nl.Taka,dat$Nl.NT,col="gray",pch=19,xlab="Nl, Takashima",ylab="Nl, Niinemets")
 abline(0,1)
-plot(dat$Nl.Taka,dat$Nl.NT,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,ylim=c(0,.45),xlim=c(0,.2),xlab="Nl, Takashima",ylab="Nl, Niinemets")
-legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"bottomright")
-abline(0,1)
-
 ```
+
+The methods are equal, suggesting confidence in Nl estimates, and they vary widely. We expect shade plants (here, woodies) to have generally higher values of Nl. There are also outliers that need inspection.
+
+```{r}
+boxplot(Nl.Taka~woody,dat,col=c("darkgreen","blue"),ylim=c(0,.6))
+```  
+
+##
 
 
