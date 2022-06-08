@@ -3,6 +3,8 @@ title: "N allocation analysis"
 author: "Jason Fridley"
 date: "6/8/2022"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -23,47 +25,100 @@ covar = read.csv(paste0(dfold,"covariates.csv")) #covariates at the species-regi
 dat = merge(dat,covar,by.x=c("species","region"),by.y=c("species","region"),all.x=T)
 ```
 
+## Colors for plotting
+
+```{r}
+#colors    
+  makeTransparent<-function(someColor, alpha=150)
+  {   newColor<-col2rgb(someColor)
+  apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+                                              blue=curcoldata[3],alpha=alpha, maxColorValue=255)}) }
+c1 = makeTransparent("darkgreen")
+c2 = makeTransparent("blue")
+c3 = makeTransparent("red2")
+```
+
 ## Leaf N pools
 
 We are interested in 5 pools of leaf N:
+
 1. Nr = N in Rubisco
+
 2. Nl = N allocated to light harvesting (Chl, corrected by 'Cb', a binding coefficient that describes the efficiency at which Nl contributes to light energy capture; Niinemets & Tenhunen 1997)
+
 3. Nb = N allocated to bioenergetics associated with electron transfer proteins
+
 4. Nc = N associated with cell wall proteins
+
 5. Nd = N associated with defensive secondary metabolites, esp. cyanogenic glycosides and alkaloids
 
 We expect the sum of these 5 pools to be less than total leaf N, because there are residual unmeasured pools (organic acids, inorganic N). 
 
 ### N in Rubisco (Nr)
 
-Evans (1989) reported that leaf N allocation to Rubisco varies from 5-30%, although increasing with leaf N content. To calculate Nr in our data, we note that measurements were from leaf discs and thus area based (ug cm-2), which can be transformed to mass based (g-1) by multiplying by SLA. Rubisco is 16% N, so ug N in Rubisco per g leaf is calculated by dividing Rubisco by 16. To calculate allocation (Nr = Rubisco N / leaf N), we divide by 10^6 to conver to g, and divide by g leaf N:
+Evans (1989) reported that leaf N allocation to Rubisco varies from 5-30%, although increasing with leaf N content. To calculate Nr in our data, we note that measurements were from leaf discs and thus area based (ug cm-2), which can be transformed to mass based (g-1) by multiplying by SLA. Rubisco is 16% N, so ug N in Rubisco per g leaf is calculated by dividing Rubisco by 16. To calculate allocation (Nr = Rubisco N / leaf N), we divide by 10^6 to convert to g, and divide by g leaf N:
+
+```{r warning=F, fig.width=8, fig.height=4}
+dat$SLA = as.numeric(as.character(dat$Specific.leaf.area)) #SLA in cm2 g-1
+dat$Rub.g = as.numeric((dat$Rubisco.content)) * dat$SLA #ug Rubisco per g leaf
+dat$RubN = dat$Rub.g / 16 #ug N in Rubisco per g leaf
+dat$Nmass = (as.numeric(as.character(dat$leafN))/100) #g leaf N per g leaf
+dat$Rub.perc = (dat$RubN / 1000000) / dat$Nmass #Rubisco g per g leaf N
+hist(dat$Rub.perc[dat$Rub.perc<1])
+summary(dat$Rub.perc) #just a few outliers; median is 12%
+par(mfrow=c(1,2),mar=c(5,5,1,1))
+plot(dat$Nmass,dat$Rub.perc,col=c(c1,c2)[dat$woody+1],pch=19,ylim=c(0,.6),xlab="Nmass",ylab="N Rubisco")
+legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blue"),"topright")
+plot(dat$Nmass,dat$Rub.perc,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,ylim=c(0,.6),xlab="Nmass",ylab="N Rubisco")
+legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"topright")
+
+```
+
+There are several outliers that merit inspection, but the majority of values are within the Evans range and there is not a strong bias by growth form. Nr values by region are overlapping.
+
+### N in light harvesting (Nl)
+
+Evans (1989) suggests that N in chl is tightly connected with total thylakoid N, such that Nl is proportional to Nb, and that together, total thylakoid N increases from about 20% in sun to over 40% in shade. His estimate is that the N cost of thylakoids is 50 mol N per mol chl, but this includes bioenergetic proteins in addition to chl itself, which scales only 4 mol N per mol chl. Thus, only 4/50 (8%) of thylakoid N is actually contained with chl, or 1.6-3.2% of total leaf N.
+
+Niinemets & Tenhunen (1997) also consider Nl to be proportional to leaf chl content, and calculate Nl as:
+
+Nl = chl / (Nmass * Cb)
+
+where chl is leaf chl concentration in mmol g-1, Nmass is leaf N (g g-1), and Cb is a 'chl binding' coefficient (mmol chl per g N) that--I think--suggests some N in chloroplasts does not actually contribute to light capture; in Acer saccharum values of Cb are between 2 and 2.5. 
+
+Takashima et al. (2004) assume that Nl is calculated based on a ratio of 37.1 mol Nl per mol chl. Note large difference in estimated Nl for maple in Niinemets & Tenhunen (1997) (20-60%) vs. oaks in Takashima (10%).
+
+We can first examine the distribution of leaf chl content. Our measurements were based on leaf discs, and so can be converted from ug chl per cm2 to ug chl per g; assuming chl is 6.27% of chl on a mass basis (chlA = C55 H72 O5 N4 Mg, mol weight of 893.5 g/mol) we can convert to chl N. 
 
 ```{r}
-dat$Rub.g = as.numeric((dat$Rubisco.content)) * as.numeric(as.character(dat$Specific.leaf.area))  #ug Rubisco per g leaf
-dat$RubN = dat$Rub.g / 16 #ug N in Rubisco per g leaf
-dat$Rub.perc = (dat$RubN / 1000000) / (as.numeric(as.character(dat$leafN))/100) #Rubisco g per g leaf N
-hist(dat$Rub.perc)
-summary(dat$Rub.perc) #just a few outliers; median is 12%
+dat$chl.ugcm2 = as.numeric(as.character(dat$Total.Chlorophyll)) #ug chl per cm2
+dat$chl.mmolm2 = (dat$chl.ugcm2 / 1000000) * 1000 * 10000 / 893.5 #mmol chl per m2 leaf
+hist(dat$chl.mmolm2) #between 0 and 0.6, consistent with Evans 1989
+dat$chl.ugg = dat$chl.ugcm2 * dat$SLA  #ug chl per g leaf
+dat$chlN = dat$chl.ugg / (1/.0627) #ug N in Chl per g leaf
+dat$Chl.perc = (dat$chlN / 1000000) / dat$Nmass
+hist(dat$Chl.perc[dat$Chl.perc<.1])
+summary(dat$Chl.perc)
+```
+
+Chl content values closely match Evans 1989, and conversion to N in Chl shows a range of .01-.05 with a median of 1.4%, reasonably close to Evans' (1989) prediction. To convert to Nl, we can use either the Niinemets & Tenhunen (1997) or Takashima et al. (2004) approach:
+
+```{r fig.width=8, fig.height=4}
+dat$chl.mmolg = dat$chl.mmolm2*dat$SLA/10000 #mmol chl per g leaf
+dat$Nl.NT = dat$chl.mmolg / (dat$Nmass*2.3) #N&T '97 approach, assuming Cb is 2.3
+hist(dat$Nl.NT[dat$Nl.NT<1])
+  #majority between 5-30%, good correspondence to A. saccharum in N&T '97
+dat$Nl.Taka = (dat$chl.mmolg * 37.1 / 1000) * 14 #Takashima et al. 2004 approach
+hist(dat$Nl.Taka[dat$Nl.Taka<.4]*10) #most between 2-5%, median is 3%, somewhat lower than oaks in Takashima (~10%)
+summary(dat$Nl.Taka)
+par(mfrow=c(1,2),mar=c(5,5,1,1))
+plot(dat$Nl.Taka,dat$Nl.NT,col=c(c1,c2)[dat$woody+1],pch=19,ylim=c(0,.45),xlim=c(0,.2),xlab="Nl, Takashima",ylab="Nl, Niinemets")
+legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blue"),"bottomright")
+abline(0,1)
+plot(dat$Nl.Taka,dat$Nl.NT,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,ylim=c(0,.45),xlim=c(0,.2),xlab="Nl, Takashima",ylab="Nl, Niinemets")
+legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"bottomright")
+abline(0,1)
 
 ```
 
-
-dat$Rub.g = as.numeric((dat$Rubisco.content)) * as.numeric(as.character(dat$Specific.leaf.area))  #ug Rubisco per g leaf
-dat$RubN = dat$Rub.g / 16 #ug N in Rubisco per g leaf
-dat$Rub.perc = (dat$RubN / 1000000) / (as.numeric(as.character(dat$leafN))/100) #Rubisco g per g leaf N
-hist(dat$Rub.perc)
-summary(dat$Rub.perc) #just a few outliers; median is 12%
-
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-dat$GLI = as.numeric(as.character(dat$GLI.128))
-dat$GLI[dat$GLI==1] = 100```
-
-## Including Plots
-
-```
 
