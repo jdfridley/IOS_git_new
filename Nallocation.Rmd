@@ -11,6 +11,10 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## TO DO:
+Need temperature corrections for Jmc, Vmc.
+Need leaf punch area for samples used to create cell wall pellets to calculate Nc.
+
 ## Dataset
 
 The dataset (dat) is the merged output of the Bayesian photosynthesis model (from the script 'photo_params_all_HB4.R', including posterior means and SDs of Asat (A at 40 Pa and saturating light), Vcmax, Jmax, alpha, and Rd) and lab assay results in the master Google Docs spreadsheet (currently version 5), plus a separate csv file of associated covariates for each sample (nativity, range, growth form).
@@ -132,18 +136,46 @@ where Jmax is measured in umol e- m-2 s-2, SLA is cm2 g-1, and 14 converts mol N
 
 Niinemets & Tenhunen (1997) is similar but more general because constants include temperature dependencies of J:
 
-Nb (N&T '97) = Jmax * (SLA/10000) * (1/Nmass) * (1/14) * (1/(8.06*Jmc))
+Nb (N&T '97) = Jmax * (SLA/10000) * (1/Nmass) * (1/(8.06*Jmc))
 
-where Jmc is the specific activity of electron transport in umol e- per umol cytochrome f s-1 and depends on leaf temperature; Fig. A2 in N&T '97 shows that Jmc varies between 150 and 200 from 25 to 30C. 
+where Jmc is the specific activity of electron transport in umol e- per umol cytochrome f s-1 and depends on leaf temperature; Fig. A2 in N&T '97 shows that Jmc varies between 150 and 200 from 25 to 30C and declines thereafter. The equation for temperature specificity (same as for Vmc) given by N&T is:
 
+Jmc = exp(c-(dHa/(R*Tk))) / (1+ exp((dS*T-dHd)/R*Tk) )
+
+The constants given for Jmc are c=14.77, dHa=24100, dHd=564150, dS=1810, R=8.314, and Tk is leaf temp. We can write a function and check for consistency with Fig. A2, and confirm that Takashima's value of 156 conforms to 25 C:
 
 ```{r}
-dat$Nb.Taka = dat$Jmax*(9.53/156)*(dat$SLA/10000)*14*(1/dat$Nmass)/1000
-hist(dat$Nb.Taka[dat$Nb.Taka<1])
-summary(dat$Nb.Taka)
+Jmc.temp = function(c,dHa,dHd,dS,R,Tk) {
+  exp(c-(dHa/(R*Tk))) / (1 + exp(  ((dS*Tk)-dHd) / (R*Tk)) )
+}
+Tk.vec = seq(20,40,length=100) + 273.15
+y = Jmc.temp(c=14.77, dHa=24100, dHd=564150, dS=1810, R=8.314, Tk=Tk.vec)
+plot(Tk.vec-273,y)
+abline(v=c(25))
+Jmc.temp(c=14.77, dHa=24100, dHd=564150, dS=1810, R=8.314, Tk=25+273.15)
+Jmc.temp(c=14.77, dHa=24100, dHd=564150, dS=1810, R=8.314, Tk=30+273.15)
+  #value at 30C should be 182
 ```
 
-Here Nb is derived solely from Jmax and assumptions about N content of bioenergetic proteins, but values centered are 10% are not unreasonable. We can now compare Nl and Nb and confirm the expectations that 1) Nl is generally larger (Takashima et al. 2004) and 2) allocation to Nl is skewed high for shade plants (here, woodies).
+Results are consistent with N&T and Takashima. Note some of the leaf temperatures in our study were taken at 30C, and so need a value of 182 in the Takashima equation.
+
+********add leaf T values to dataset
+
+```{r}
+#assuming that all measurements taken at 25C (need to correct for some values)
+dat$Nb.Taka = dat$Jmax*(9.53/156)*(dat$SLA/10000)*14*(1/dat$Nmass)/1000
+hist(dat$Nb.Taka[dat$Nb.Taka<1])
+summary(dat$Nb.Taka) #average of 10%
+dat$Nb.NT = dat$Jmax * (dat$SLA/10000) * (1/dat$Nmass) * (1/(8.06*156))
+hist(dat$Nb.NT[dat$Nb.NT<1])
+summary(dat$Nb.NT) #average of 10%
+par(mfrow=c(1,1),mar=c(5,5,1,1))
+plot(dat$Nb.Taka,dat$Nb.NT,col="gray",pch=19,xlab="Nl, Takashima",ylab="Nl, Niinemets")
+abline(0,1)
+  
+```
+
+Here Nb is derived solely from Jmax and assumptions about N content of bioenergetic proteins, but values centered are 10% are not unreasonable, and the methods differ only in the value of the constant and by a small amount. We can now compare Nl and Nb and confirm the expectations that 1) Nl is generally larger (Takashima et al. 2004) and 2) allocation to Nl is skewed high for shade plants (here, woodies).
 
 ```{r}
 par(mfrow=c(1,1),mar=c(5,5,1,1))
@@ -152,4 +184,24 @@ legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blu
 abline(0,1)
 ```
 
+## N in the cell wall (Nc)
+
+We have empirical measurements of cell wall mass (in mg of the final pellet sample) and cell wall %N. From these Nc is calculated as:
+
+Nc = [cell wall mass per leaf area] x [%N of cell wall] / [leaf Narea]
+
+***Need area of leaf disc used to make pellet
+
+
+```{r}
+dat$wallN = dat$Cell.wall..N / 100 #g N per g cell wall
+hist(dat$wallN)
+summary(dat$wallN) #mean is just under 1%, surprisingly high
+
+```
+
+
+### N in defensive chemistry (Nd)
+
+Waiting on data.
 
