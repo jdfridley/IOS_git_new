@@ -62,6 +62,8 @@ We are interested in 5 pools of leaf N:
 
 5. Nd = N associated with defensive secondary metabolites, esp. cyanogenic glycosides and alkaloids
 
+6. ?? 'Other protein nitrogen': (soluble protein N + SDS protein N) - (Nr + Nl + Nb): Takashima et al. 2004
+
 We expect the sum of these 5 pools to be less than total leaf N, because there are residual unmeasured pools (organic acids, inorganic N). 
 
 ### N in Rubisco (Nr)
@@ -207,10 +209,32 @@ summary(dat$wallN) #mean is just under 1%, surprisingly high
 
 ```
 
-
 ### N in defensive chemistry (Nd)
 
 Waiting on data.
+
+### Other protein N
+
+Takashima et al. (2004) calculate this as "nitrogen in the water- and SDS soluble protein minus nitrogen in the photosynthetic apparatus", and it was the largest leaf N pool measured in that study.
+
+```{r}
+dat$Narea = dat$Nmass / (dat$SLA/10000)
+dat$NUE = dat$Asat / dat$Narea
+dat$Nphoto = dat$Rub.perc + dat$Nl.Taka + dat$Nb.Taka
+#transform solubles data to g N per g leaf
+dat$Water.protN.gg = ((as.numeric(as.character(dat$Water.soluble.Protein.mg.cm2))/1000) * dat$SLA) / 16
+dat$SDS.protN.gg = ((as.numeric(as.character(dat$SDS.soluble.Protein.mg.cm2))/1000) * dat$SLA) / 16
+dat$other.protN = (dat$Water.protN.gg/dat$Nmass) + (dat$SDS.protN.gg/dat$Nmass) - dat$Nphoto
+hist(dat$other.protN)
+  #ballpark?
+
+plot((dat$Water.protN.gg/dat$Nmass),dat$Rub.perc,xlim=c(0,1),ylim=c(0,1))
+plot((dat$SDS.protN.gg/dat$Nmass),(dat$Nl.Taka + dat$Nb.Taka),xlim=c(0,1),ylim=c(0,1),col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
+plot((dat$SDS.protN.gg/dat$Nmass),(dat$Nl.Taka + dat$Nb.Taka),xlim=c(0,1),ylim=c(0,.7),col=c(c1,c2)[dat$woody+1],pch=19)
+abline(0,1)
+  #something funny going on with parts of the dataset...
+
+```
 
 
 ### Comparing leaf N fractions in Fallopia across regions
@@ -310,16 +334,13 @@ legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","b
 plot(fall$Rub.perc*fall$Narea,fall$Vcmax,col=c(c1,c2,c3)[as.numeric(fall$Region)],pch=19,xlab="Rubisco N (g m-2)",ylab="Vcmax")
   #but it doesn't; suggests a problem with Rubisco?
 
-par(mfrow=c(1,2),mar=c(4,4,1,1))
-plot(dat$Narea[dat$woody==0],dat$Vcmax[dat$woody==0],col=c(c1,c2,c3)[as.numeric(dat$Region)][dat$woody==0],pch=19,xlab="Leaf N (g m-2)",ylab="Vcmax")
-legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"topleft")
-plot(dat$Rub.perc[dat$woody==0]*dat$Narea[dat$woody==0],dat$Vcmax[dat$woody==0],col=c(c1,c2,c3)[as.numeric(dat$Region)][dat$woody==0],pch=19,xlab="Rubisco N (g m-2)",ylab="Vcmax")
-  #but it doesn't; suggests a problem with Rubisco?
-
 #PNUE
 boxplot(NUE~Region,data=fall)
 summary.aov(lm(NUE~Region,data=fall))
 TukeyHSD(aov(NUE~Region,data=fall)) #ENA lower PNUE than both Japan or France
+
+#plot Nl vs. Nthy across 3 groups
+
 
 ```
 
