@@ -12,7 +12,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## TO DO:
-Need leaf punch area for samples used to create cell wall pellets to calculate Nc.
 Need defensive chemistry data to calculate Nd.
 Incorporate solubles (review Takashima paper, which components for these?).
 Need to do remaining calculations mentioned in proposl (see notes 6-8-22).
@@ -111,6 +110,12 @@ dat$chlN = dat$chl.ugg / (1/.0627) #ug N in Chl per g leaf
 dat$Chl.perc = (dat$chlN / 1000000) / dat$Nmass
 hist(dat$Chl.perc[dat$Chl.perc<.1])
 summary(dat$Chl.perc)
+
+#examine across regions
+dat$Year = as.numeric(as.character(dat$year))
+par(mfrow=c(1,1),mar=c(8,4,1,1))
+boxplot(chl.mmolm2~Year + Region,data=dat,las=3,xlab="")
+  #problem with France values from 2020 and 2021
 ```
 
 Chl content values closely match Evans 1989, and conversion to N in Chl shows a range of .01-.05 with a median of 1.4%, reasonably close to Evans' (1989) prediction. To convert to Nl, we can use either the Niinemets & Tenhunen (1997) or Takashima et al. (2004) approach, which are (nearly) equivalent if Cb=1.93 is assumed.
@@ -199,13 +204,27 @@ We have empirical measurements of cell wall mass (in mg of the final pellet samp
 
 Nc = [cell wall mass per leaf area] x [%N of cell wall] / [leaf Narea]
 
-***Need area of leaf disc used to make pellet
-
-
 ```{r}
 dat$wallN = dat$Cell.wall..N / 100 #g N per g cell wall
 hist(dat$wallN)
 summary(dat$wallN) #mean is just under 1%, surprisingly high
+dat$Narea.cm2 = dat$Nmass / dat$SLA #g N per cm2 leaf area
+dat$wallg.percm2 = (dat$Cell.wall.sample.mass.mg * as.numeric(as.character(dat$cell.wall.leaf.area.cm2)))/1000 #cell wall mass, g per cm2 leaf area
+dat$LMA = 1/dat$SLA #leaf mass per area, g per cm2
+par(mfrow=c(1,1),mar=c(5,5,3,3))
+plot(dat$LMA*1000,dat$wallg.percm2*1000,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,xlab="LMA mg cm-2",ylab="Cell wall mg cm-2")
+legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"bottomright")
+abline(0,1); abline(0,.8,lty=2); abline(0,.6,lty=3); abline(0,.4,lty=3)
+points(dat$LMA[dat$species=="Fallopia japonica"]*1000,dat$wallg.percm2[dat$species=="Fallopia japonica"]*1000,pch=21,xlab="LMA g m-2",ylab="Cell wall g m-2",col="black",lwd=2)
+text(7,7,"100%",cex=.7,xpd=T)
+text(9,7,"80%",cex=.7,xpd=T)
+text(11.5,7,"60%",cex=.7,xpd=T)
+text(12.2,4.7,"40%",cex=.7,xpd=T)
+
+dat$Nc = (dat$wallmg.percm2 * dat$wallN) / (dat$Narea.cm2*1000) #percent leaf N present in cell wall
+hist(dat$Nc[dat$Nc<1])
+
+boxplot(dat$wallg.percm2/dat$LMA ~ dat$Region,subset=dat$species=="Fallopia japonica")
 
 ```
 
@@ -308,7 +327,7 @@ midpoints = apply(barht2,2,cumsum) - barht2/2  #height of middle of each compone
 percents = (barht2 / colSums(barht2))*100 #percentages of each for plotting
 perc.lab = paste0(round(percents,1),"%")
 par(mar=c(3,4,1,6))
-b1 = barplot(barht2,beside=F,ylab="g N per m2 leaf",col=col.bars)
+b1 = barplot(barht2,beside=F,ylab="g N per m2 leaf",col=bar.cols)
 text(rep(b1,each=4),as.numeric(midpoints),perc.lab,col="white",cex=.8,lwd=2)
 mtext("Rubisco",side=4,las=1,at=midpoints[1,3])
 mtext("Light harvest",side=4,las=1,at=midpoints[2,3])
