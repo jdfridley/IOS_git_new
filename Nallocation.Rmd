@@ -17,6 +17,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 - Add defensive chemistry data to calculate Nd. Lamine shared on 6-14-22. Note few individuals beyond Prunus serotina have any cyanogenic glycoside N; for alkaloids, it is difficult to estimate alkaloid N with precision because alkaloids cover a range of compounds of different N amounts. Could use a maximum (likely to be very small component of N in any event).
 
+- Add remaining cell wall content and N values for France and Japan when available.
+
 - Need SLA values for ENA herbs, resample with Julie.
 
 - Need GLI values for remaining woody samples in France.
