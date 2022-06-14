@@ -21,11 +21,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 - Need GLI values for remaining woody samples in France.
 
-- Incorporate solubles (review Takashima paper, which components for these?).
+- Water and SDS soluble values may be inaccurate; see below comparisons.
 
 - Need to do remaining calculations mentioned in proposal (see notes 6-8-22).
 
 - Put all in HB model once data issues have been dealt with.
+
 
 ## Dataset
 
@@ -275,29 +276,58 @@ hist(dat$other.protN)
   #ballpark?
 
 #solubles vs. leaf N
-par(mfrow=c(1,2),mar=c(5,5,1,1))
+par(mfrow=c(1,2),mar=c(5,5,1,1),oma=c(1,1,1,1))
 plot(dat$Narea,dat$Water.protN.gm2,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
+points(dat$Narea[dat$species=="Fallopia japonica"],dat$Water.protN.gm2[dat$species=="Fallopia japonica"],pch=21,col="black",lwd=2)
 abline(0,1); abline(0,.5,lty=3)
   #a few apparent outliers
 plot(dat$Narea,dat$SDS.protN.gm2,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
+points(dat$Narea[dat$species=="Fallopia japonica"],dat$SDS.protN.gm2[dat$species=="Fallopia japonica"],pch=21,col="black",lwd=2)
 abline(0,1); abline(0,.5,lty=3)
   #a few apparent outliers
   #something strange with two sets of lines, ENA only in top one
 
-par(mfrow=c(2,1),mar=c(.5,5,1,1),oma=c(5,1,1,1))
-boxplot(Water.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,xaxt="n")
-legend(legend=c("Herbs","Woody"),text.col=c("darkgreen","brown"),"topright",bty="n")
-boxplot(SDS.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,ylim=c(0,2))
-
-
-
-
-
-plot((dat$Water.protN.gg/dat$Nmass),dat$Rub.perc,xlim=c(0,1),ylim=c(0,1))
-plot((dat$SDS.protN.gg/dat$Nmass),(dat$Nl.Taka + dat$Nb.Taka),xlim=c(0,1),ylim=c(0,1),col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
-plot((dat$SDS.protN.gg/dat$Nmass),(dat$Nl.Taka + dat$Nb.Taka),xlim=c(0,1),ylim=c(0,.7),col=c(c1,c2)[dat$woody+1],pch=19)
+#water v. sds
+par(mfrow=c(1,2),mar=c(5,5,1,1),oma=c(1,1,1,1))
+plot(dat$Water.protN.gm2,dat$SDS.protN.gm2,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,log="xy")
+points(dat$Water.protN.gm2[dat$species=="Fallopia japonica"],dat$SDS.protN.gm2[dat$species=="Fallopia japonica"],pch=21,col="black",lwd=2)
 abline(0,1)
-  #something funny going on with parts of the dataset...
+plot(dat$Water.protN.gm2,dat$SDS.protN.gm2,col=c(c1,c2)[as.numeric(dat$woody)+1],pch=19,log="xy")
+points(dat$Water.protN.gm2[dat$species=="Fallopia japonica"],dat$SDS.protN.gm2[dat$species=="Fallopia japonica"],pch=21,col="black",lwd=2)
+abline(0,1)
+
+#solubles by region, year, and growth form
+par(mfrow=c(2,1),mar=c(.5,5,1,1),oma=c(5,1,1,1))
+boxplot(Water.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,xaxt="n",subset=dat$species!="Fallopia japonica")
+legend(legend=c("Herbs","Woody"),text.col=c("darkgreen","brown"),"topright",bty="n")
+boxplot(SDS.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,ylim=c(0,2),subset=dat$species!="Fallopia japonica")
+
+#ratio of solubles by region, year, and growth form
+par(mfrow=c(1,1),mar=c(.5,5,1,1),oma=c(5,1,1,1))
+boxplot(Water.prot.mg.cm2/SDS.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,subset=dat$species!="Fallopia japonica",ylim=c(0,5))
+legend(legend=c("Herbs","Woody"),text.col=c("darkgreen","brown"),"topright",bty="n")
+
+#Narea 
+par(mfrow=c(1,1),mar=c(.5,5,1,1),oma=c(5,1,1,1))
+boxplot(Narea~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,subset=dat$species!="Fallopia japonica")
+legend(legend=c("Herbs","Woody"),text.col=c("darkgreen","brown"),"topright",bty="n")
+
+#solubles compared to Nr, Nl, Nb
+#water N vs. Rubisco N
+par(mfrow=c(2,1),mar=c(5,5,1,1),oma=c(1,1,1,1))
+plot((dat$Water.protN.gg/dat$Nmass),dat$Rub.perc,xlim=c(0,1),ylim=c(0,1),col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,xlab="Water soluble N (g g-1)",ylab="Rubisco N (g g-1)")
+abline(0,1)
+legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"topright")
+  #concerning: no relationship
+plot((dat$SDS.protN.gg/dat$Nmass),(dat$Nl.Taka + dat$Nb.Taka),xlim=c(0,1),ylim=c(0,1),col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,xlab="SDS soluble N (g g-1)",ylab="Nl + Nb (g g-1)")
+abline(0,1)
+  #messy positive relationship that varies by region
+
+#'Other protein N'
+# = (soluble protein N + SDS protein N) - (Nr + Nl + Nb): Takashima et al. 2004
+par(mfrow=c(1,1))
+hist(dat$other.protN,xlim=c(-.5,1.5),breaks=50)
+  #mode is about zero, so have some problems rectifying these protein measures
 
 ```
 
@@ -339,15 +369,16 @@ text(.03,.002,"6.5%")
 
 library(RColorBrewer)
 bar.cols = brewer.pal(n = 8, name = 'Greens')[c(8,7,5,1)]
-bar.cols = c(bar.cols[1:3],"burlywood4","cornflowerblue")
+bar.cols = c(bar.cols[1:3],"lightgreen","burlywood4","cornflowerblue")
 
 #create stacked bar graph of abs N in each partition, based on per g leaf
 FNr.m = tapply(fall$Rub.perc*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 FNl.m = tapply(fall$Nl.Taka*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 FNb.m = tapply(fall$Nb.Taka*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
+FNo.m = tapply(fall$other.protN*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 FNc.m = tapply(fall$Nc*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 Ntot.m = tapply(fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
-barht = rbind(FNr.m,FNl.m,FNb.m,FNc.m)
+barht = rbind(FNr.m,FNl.m,FNb.m,FNo.m,FNc.m)
 tot3 = colSums(barht)
 FN.miss = Ntot.m - tot3 
 barht2 = rbind(barht,FN.miss)
@@ -356,12 +387,13 @@ percents = (barht2 / colSums(barht2))*100 #percentages of each for plotting
 perc.lab = paste0(round(percents,1),"%")
 par(mar=c(3,4,1,6),mfrow=c(1,1))
 b1 = barplot(barht2*1000,beside=F,ylab="mg N per N leaf",col=bar.cols)
-text(rep(b1,each=5),as.numeric(midpoints)*1000,perc.lab,col="white",cex=.8,lwd=2)
+text(rep(b1,each=6),as.numeric(midpoints)*1000,perc.lab,col="white",cex=.8,lwd=2)
 mtext("Rubisco",side=4,las=1,at=midpoints[1,3]*1000)
 mtext("Light harvest",side=4,las=1,at=midpoints[2,3]*1000)
 mtext("Bioenergetics",side=4,las=1,at=midpoints[3,3]*1000)
-mtext("Cell wall",side=4,las=1,at=midpoints[4,3]*1000)
-mtext("Residual",side=4,las=1,at=midpoints[5,3]*1000)
+mtext("Other protein N",side=4,las=1,at=midpoints[4,3]*1000)
+mtext("Cell wall",side=4,las=1,at=midpoints[5,3]*1000)
+mtext("Residual",side=4,las=1,at=midpoints[6,3]*1000)
 
 #create stacked bar graph of abs N in each partition, based on per m2 leaf
 FNr.m = tapply(fall$Rub.perc*fall$Narea,fall$Region,function(x)mean(x,na.rm=T))
