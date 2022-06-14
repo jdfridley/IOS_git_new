@@ -1,7 +1,7 @@
 ---
 title: "N allocation analysis"
 author: "Jason Fridley"
-date: "6/8/2022"
+date: "6/14/2022"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 - France 2020 and 2021 chl values seem too low (by about half?). What changed in method from 2019 to 2020?
 
-- Need defensive chemistry data to calculate Nd. Lamine will share soon.
+- Add defensive chemistry data to calculate Nd. Lamine shared on 6-14-22. Note few individuals beyond Prunus serotina have any cyanogenic glycoside N; for alkaloids, it is difficult to estimate alkaloid N with precision because alkaloids cover a range of compounds of different N amounts. Could use a maximum (likely to be very small component of N in any event).
 
 - Need SLA values for ENA herbs, resample with Julie.
 
@@ -72,31 +72,32 @@ We are interested in 5 pools of leaf N:
 
 5. Nd = N associated with defensive secondary metabolites, esp. cyanogenic glycosides and alkaloids
 
-6. ?? 'Other protein nitrogen': (soluble protein N + SDS protein N) - (Nr + Nl + Nb): Takashima et al. 2004
+Another pool could be estimated as 'other protein nitrogen': (soluble protein N + SDS protein N) - (Nr + Nl + Nb), following Takashima et al. 2004 (see below).
 
 We expect the sum of these pools to be less than total leaf N, because there are residual unmeasured pools (organic acids, inorganic N). 
 
 ### N in Rubisco (Nr)
 
-Evans (1989) reported that leaf N allocation to Rubisco varies from 5-30%, although increasing with leaf N content. To calculate Nr in our data, we note that measurements were from leaf discs and thus area based (ug cm-2), which can be transformed to mass based (g-1) by multiplying by SLA. Rubisco is 16% N, so ug N in Rubisco per g leaf is calculated by dividing Rubisco by 16. To calculate allocation (Nr = Rubisco N / leaf N), we divide by 10^6 to convert to g, and divide by g leaf N:
+Evans (1989) reported that leaf N allocation to Rubisco varies from 5-30%, although increasing with leaf N content. To calculate Nr in our data, we note that measurements were from leaf discs and thus area based (ug cm-2), which can be transformed to mass based (g-1) by multiplying by SLA. Rubisco is 16% N, so ug N in Rubisco per g leaf is calculated by multiplying Rubisco protein by .16. To calculate allocation (Nr = Rubisco N / leaf N), we divide by 10^6 to convert to g, and divide by g leaf N:
 
 ```{r warning=F, fig.width=8, fig.height=4}
 dat$SLA = as.numeric(as.character(dat$Specific.leaf.area)) #SLA in cm2 g-1
 dat$Rub.g = as.numeric((dat$Rubisco.content)) * dat$SLA #ug Rubisco per g leaf
-dat$RubN = dat$Rub.g / 16 #ug N in Rubisco per g leaf
+dat$RubN = dat$Rub.g * .16 #ug N in Rubisco per g leaf
 dat$Nmass = (as.numeric(as.character(dat$leafN))/100) #g leaf N per g leaf
 dat$Rub.perc = (dat$RubN / 1000000) / dat$Nmass #Rubisco g per g leaf N
 hist(dat$Rub.perc[dat$Rub.perc<1])
-summary(dat$Rub.perc) #just a few outliers; median is 12%
+summary(dat$Rub.perc) #just a few outliers; median is 30%
 par(mfrow=c(1,2),mar=c(5,5,1,1))
-plot(dat$Nmass,dat$Rub.perc,col=c(c1,c2)[dat$woody+1],pch=19,ylim=c(0,.6),xlab="Nmass",ylab="N Rubisco")
-legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blue"),"topright")
-plot(dat$Nmass,dat$Rub.perc,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,ylim=c(0,.6),xlab="Nmass",ylab="N Rubisco")
-legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"topright")
-
+plot(dat$Nmass,dat$RubN/1000000,col=c(c1,c2)[dat$woody+1],pch=19,ylim=c(0,.05),xlab="Leaf N (g g-1)",ylab="g N Rubisco per g leaf")
+legend(legend=c("Herbaceous","Woody"),bty="n",cex=.8,text.col=c("darkgreen","blue"),"topleft")
+abline(0,1)
+plot(dat$Nmass,dat$RubN/1000000,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19,ylim=c(0,.05),xlab="Leaf N (g g-1)",ylab="g N Rubisco per g leaf")
+legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"topleft")
+abline(0,1)
 ```
 
-There are several outliers that merit inspection, but the majority of values are within the Evans range and there is not a strong bias by growth form. Nr values by region are overlapping.
+There are several outliers that merit inspection and the values seem a little high compared to the Evans expectation, but not unreasonable.
 
 ### N in light harvesting (Nl)
 
@@ -227,7 +228,7 @@ dat$wallg.percm2 = (dat$Cell.wall.sample.mass.mg / as.numeric(as.character(dat$c
 dat$wallg.perg = dat$wallg.percm2*dat$SLA #cell wall mass as % leaf mass
 hist(dat$wallg.perg) 
 summary(dat$wallg.perg)
-#some outliers, but not unresonable (20-17% middle half quantile)
+#some outliers, but not unreasonable (10-17% middle half quantile)
 
 #plot vs. LMA
 dat$LMA = 1/dat$SLA #leaf mass per area, g per cm2
@@ -243,10 +244,11 @@ text(5.6,1.1,"20%",cex=.7,xpd=T)
 text(11,1.1,"10%",cex=.7,xpd=T)
 
 dat$Nc = (dat$wallg.percm2 * dat$wallN) / (dat$Narea.cm2) #percent leaf N present in cell wall
-hist(dat$Nc[dat$Nc<1]) #seems much too high
+hist(dat$Nc[dat$Nc<1]) 
 summary(dat$Nc)
   #median 4.4%; range 1-12% or so, reasonable
 
+#examine across Fallopia samples (where complete)
 boxplot(dat$wallg.percm2/dat$LMA ~ dat$Region,subset=dat$species=="Fallopia japonica")
 boxplot(dat$Nc ~ dat$Region,subset=dat$species=="Fallopia japonica")
 
@@ -254,26 +256,25 @@ boxplot(dat$Nc ~ dat$Region,subset=dat$species=="Fallopia japonica")
 
 ### N in defensive chemistry (Nd)
 
-Waiting on data.
+Received data 6-14-22, awaiting data entry. Likely to be small except for Prunus serotina.
 
 ### Other protein N
 
 Takashima et al. (2004) calculate this as "nitrogen in the water- and SDS soluble protein minus nitrogen in the photosynthetic apparatus", and it was the largest leaf N pool measured in that study.
 
-```{r}
+```{r, warning=F}
 dat$Narea = dat$Nmass / (dat$SLA/10000)
 dat$NUE = dat$Asat / dat$Narea
 dat$Nphoto = dat$Rub.perc + dat$Nl.Taka + dat$Nb.Taka
 #transform solubles data to g N per g leaf
 dat$Water.prot.mg.cm2 = as.numeric(as.character(dat$Water.soluble.Protein.mg.cm2))
 dat$SDS.prot.mg.cm2 = as.numeric(as.character(dat$SDS.soluble.Protein.mg.cm2))
-dat$Water.protN.gg = ((as.numeric(as.character(dat$Water.soluble.Protein.mg.cm2))/1000) * dat$SLA) / 16
+dat$Water.protN.gg = ((as.numeric(as.character(dat$Water.soluble.Protein.mg.cm2))/1000) * dat$SLA) * .16
 dat$Water.protN.gm2 = (dat$Water.protN.gg/dat$SLA)*10000 #water prot N in g per leaf m2
-dat$SDS.protN.gg = ((as.numeric(as.character(dat$SDS.soluble.Protein.mg.cm2))/1000) * dat$SLA) / 16
+dat$SDS.protN.gg = ((as.numeric(as.character(dat$SDS.soluble.Protein.mg.cm2))/1000) * dat$SLA) * .16
 dat$SDS.protN.gm2 = (dat$SDS.protN.gg/dat$SLA)*10000 #water prot N in g per leaf m2
 dat$other.protN = (dat$Water.protN.gg/dat$Nmass) + (dat$SDS.protN.gg/dat$Nmass) - dat$Nphoto
 hist(dat$other.protN)
-  #ballpark?
 
 #solubles vs. leaf N
 par(mfrow=c(1,2),mar=c(5,5,1,1),oma=c(1,1,1,1))
@@ -284,7 +285,7 @@ abline(0,1); abline(0,.5,lty=3)
 plot(dat$Narea,dat$SDS.protN.gm2,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
 points(dat$Narea[dat$species=="Fallopia japonica"],dat$SDS.protN.gm2[dat$species=="Fallopia japonica"],pch=21,col="black",lwd=2)
 abline(0,1); abline(0,.5,lty=3)
-  #a few apparent outliers
+  #many outliers
   #something strange with two sets of lines, ENA only in top one
 
 #water v. sds
@@ -327,9 +328,10 @@ abline(0,1)
 # = (soluble protein N + SDS protein N) - (Nr + Nl + Nb): Takashima et al. 2004
 par(mfrow=c(1,1))
 hist(dat$other.protN,xlim=c(-.5,1.5),breaks=50)
-  #mode is about zero, so have some problems rectifying these protein measures
 
 ```
+
+There are many values over 1.0, so we may have some problems rectifying these protein measures with other N allocation components.
 
 
 ### Comparing leaf N fractions in Fallopia across regions
@@ -347,9 +349,9 @@ boxplot(Nb.Taka~Region,data=fall)
 boxplot(Nthy~Region,data=fall)
 plot(fall$Nmass,fall$Rub.perc*fall$Nmass,col=c(c1,c2,c3)[as.numeric(fall$Region)],pch=19,xlab="Nmass",ylab="N Rubisco")
 legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","blue","red2"),"topright")
-abline(0,.1,lty=2)
-text(.03,.0027,"10%")
-  #Rubisco is always less than 10% of leaf N in the native range in Japan
+abline(0,.2,lty=2)
+text(.03,.0027,"20%")
+  #Rubisco is always less than 20% of leaf N in the native range in Japan
   #in France, Rubisco % increases without an increase in leaf N
   #in ENA, Rubisco increases along with leaf N
 plot(fall$Nmass,fall$Nl.Taka*fall$Nmass,col=c(c1,c2,c3)[as.numeric(fall$Region)],pch=19,xlab="Nmass",ylab="N Light harvest")
@@ -369,16 +371,17 @@ text(.03,.002,"6.5%")
 
 library(RColorBrewer)
 bar.cols = brewer.pal(n = 8, name = 'Greens')[c(8,7,5,1)]
-bar.cols = c(bar.cols[1:3],"lightgreen","burlywood4","cornflowerblue")
+bar.cols = c(bar.cols[1:3],"burlywood4","cornflowerblue")
 
 #create stacked bar graph of abs N in each partition, based on per g leaf
+  #for now, ignoring 'other protein N'
 FNr.m = tapply(fall$Rub.perc*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 FNl.m = tapply(fall$Nl.Taka*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 FNb.m = tapply(fall$Nb.Taka*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
-FNo.m = tapply(fall$other.protN*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
+#FNo.m = tapply(fall$other.protN*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 FNc.m = tapply(fall$Nc*fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
 Ntot.m = tapply(fall$Nmass,fall$Region,function(x)mean(x,na.rm=T))
-barht = rbind(FNr.m,FNl.m,FNb.m,FNo.m,FNc.m)
+barht = rbind(FNr.m,FNl.m,FNb.m,FNc.m)
 tot3 = colSums(barht)
 FN.miss = Ntot.m - tot3 
 barht2 = rbind(barht,FN.miss)
@@ -387,33 +390,14 @@ percents = (barht2 / colSums(barht2))*100 #percentages of each for plotting
 perc.lab = paste0(round(percents,1),"%")
 par(mar=c(3,4,1,6),mfrow=c(1,1))
 b1 = barplot(barht2*1000,beside=F,ylab="mg N per N leaf",col=bar.cols)
-text(rep(b1,each=6),as.numeric(midpoints)*1000,perc.lab,col="white",cex=.8,lwd=2)
+title(main="Fallopia N allocation per g leaf N")
+text(rep(b1,each=5),as.numeric(midpoints)*1000,perc.lab,col="white",cex=.8,lwd=2)
 mtext("Rubisco",side=4,las=1,at=midpoints[1,3]*1000)
 mtext("Light harvest",side=4,las=1,at=midpoints[2,3]*1000)
 mtext("Bioenergetics",side=4,las=1,at=midpoints[3,3]*1000)
-mtext("Other protein N",side=4,las=1,at=midpoints[4,3]*1000)
-mtext("Cell wall",side=4,las=1,at=midpoints[5,3]*1000)
-mtext("Residual",side=4,las=1,at=midpoints[6,3]*1000)
-
-#create stacked bar graph of abs N in each partition, based on per m2 leaf
-FNr.m = tapply(fall$Rub.perc*fall$Narea,fall$Region,function(x)mean(x,na.rm=T))
-FNl.m = tapply(fall$Nl.Taka*fall$Narea,fall$Region,function(x)mean(x,na.rm=T))
-FNb.m = tapply(fall$Nb.Taka*fall$Narea,fall$Region,function(x)mean(x,na.rm=T))
-Ntot.m = tapply(fall$Narea,fall$Region,function(x)mean(x,na.rm=T))
-barht = rbind(FNr.m,FNl.m,FNb.m)
-tot3 = colSums(barht)
-FN.miss = Ntot.m - tot3 
-barht2 = rbind(barht,FN.miss)
-midpoints = apply(barht2,2,cumsum) - barht2/2  #height of middle of each component for plotting
-percents = (barht2 / colSums(barht2))*100 #percentages of each for plotting
-perc.lab = paste0(round(percents,1),"%")
-par(mar=c(3,4,1,6))
-b1 = barplot(barht2,beside=F,ylab="g N per m2 leaf",col=bar.cols)
-text(rep(b1,each=4),as.numeric(midpoints),perc.lab,col="white",cex=.8,lwd=2)
-mtext("Rubisco",side=4,las=1,at=midpoints[1,3])
-mtext("Light harvest",side=4,las=1,at=midpoints[2,3])
-mtext("Bioenergetics",side=4,las=1,at=midpoints[3,3])
-
+#mtext("Other protein N",side=4,las=1,at=midpoints[4,3]*1000)
+mtext("Cell wall",side=4,las=1,at=midpoints[4,3]*1000)
+mtext("Residual",side=4,las=1,at=midpoints[5,3]*1000)
 
 #Asat vs. Rubisco vs. Narea 
 par(mfrow=c(2,2),mar=c(4,4,1,1))
@@ -434,25 +418,7 @@ legend(legend=c("ENA","France","Japan"),bty="n",cex=.8,text.col=c("darkgreen","b
 plot(fall$Rub.perc*fall$Narea,fall$Vcmax,col=c(c1,c2,c3)[as.numeric(fall$Region)],pch=19,xlab="Rubisco N (g m-2)",ylab="Vcmax")
   #but it doesn't; suggests a problem with Rubisco?
 
-#PNUE
-boxplot(NUE~Region,data=fall)
-summary.aov(lm(NUE~Region,data=fall))
-TukeyHSD(aov(NUE~Region,data=fall)) #ENA lower PNUE than both Japan or France
-
-#plot Nl vs. Nthy across 3 groups
-
 
 ```
 
-### alpha vs. chl
-
-#from N&T '97
-```{r}
-dat$LMA = 1/(dat$SLA/10000) #dry mass per unit area in g m-2
-alpha.pred = .292 * ((1 +(.076/(dat$chl.mmolg*dat$LMA)))^(-1))
-plot(alpha.pred,dat$alpha,ylim=c(0,1)); abline(0,1)
-hist(dat$alpha[dat$alpha<1])
-summary(lm(dat$alpha~alpha.pred,subset=dat$alpha<1))
-  #quite a terrible relationship!
-```
 
