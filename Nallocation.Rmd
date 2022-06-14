@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 - Need SLA values for ENA herbs, resample with Julie.
 
+- Need GLI values for remaining woody samples in France.
+
 - Incorporate solubles (review Takashima paper, which components for these?).
 
 - Need to do remaining calculations mentioned in proposal (see notes 6-8-22).
@@ -262,11 +264,34 @@ dat$Narea = dat$Nmass / (dat$SLA/10000)
 dat$NUE = dat$Asat / dat$Narea
 dat$Nphoto = dat$Rub.perc + dat$Nl.Taka + dat$Nb.Taka
 #transform solubles data to g N per g leaf
+dat$Water.prot.mg.cm2 = as.numeric(as.character(dat$Water.soluble.Protein.mg.cm2))
+dat$SDS.prot.mg.cm2 = as.numeric(as.character(dat$SDS.soluble.Protein.mg.cm2))
 dat$Water.protN.gg = ((as.numeric(as.character(dat$Water.soluble.Protein.mg.cm2))/1000) * dat$SLA) / 16
+dat$Water.protN.gm2 = (dat$Water.protN.gg/dat$SLA)*10000 #water prot N in g per leaf m2
 dat$SDS.protN.gg = ((as.numeric(as.character(dat$SDS.soluble.Protein.mg.cm2))/1000) * dat$SLA) / 16
+dat$SDS.protN.gm2 = (dat$SDS.protN.gg/dat$SLA)*10000 #water prot N in g per leaf m2
 dat$other.protN = (dat$Water.protN.gg/dat$Nmass) + (dat$SDS.protN.gg/dat$Nmass) - dat$Nphoto
 hist(dat$other.protN)
   #ballpark?
+
+#solubles vs. leaf N
+par(mfrow=c(1,2),mar=c(5,5,1,1))
+plot(dat$Narea,dat$Water.protN.gm2,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
+abline(0,1); abline(0,.5,lty=3)
+  #a few apparent outliers
+plot(dat$Narea,dat$SDS.protN.gm2,col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
+abline(0,1); abline(0,.5,lty=3)
+  #a few apparent outliers
+  #something strange with two sets of lines, ENA only in top one
+
+par(mfrow=c(2,1),mar=c(.5,5,1,1),oma=c(5,1,1,1))
+boxplot(Water.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,xaxt="n")
+legend(legend=c("Herbs","Woody"),text.col=c("darkgreen","brown"),"topright",bty="n")
+boxplot(SDS.prot.mg.cm2~woody+Year+Region,data=dat,las=3,xlab="",col=c("darkgreen","brown"),cex.axis=.7,ylim=c(0,2))
+
+
+
+
 
 plot((dat$Water.protN.gg/dat$Nmass),dat$Rub.perc,xlim=c(0,1),ylim=c(0,1))
 plot((dat$SDS.protN.gg/dat$Nmass),(dat$Nl.Taka + dat$Nb.Taka),xlim=c(0,1),ylim=c(0,1),col=c(c1,c2,c3)[as.numeric(dat$Region)],pch=19)
