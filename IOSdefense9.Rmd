@@ -1,0 +1,1922 @@
+---
+title: "Analysis of herbivore-associated leaf traits, Japan, France, US"
+author: "Jason Fridley"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+        collapsed: false
+        smooth_scroll: true
+    theme: journal
+    number_sections: false
+    code_folding: hide
+    df_print: paged
+editor_options: 
+  chunk_output_type: console
+---
+
+```{=html}
+<style type="text/css">
+  body{
+  font-size: 12pt;
+}
+</style>
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T,warning=F,message=F)
+```
+
+This is an analysis of whether leaf traits related to enemy release shift between the home and away ranges of alien invasive species. It includes 28 species for which we have surveyed leaf traits in at least one home range and at least one away range; for 7 species we include two different away ranges in addition to the home range. It also includes an additional 20 native species for within-region comparisons. Traits include those related to herbivore nutrition (leaf N; total protein), digestibility (cell wall content; leaf C and CN; total fiber), toxicity (alkaloids and cyanogenic glycosides), and SLA. I conducted both univariate and multivariate tests. 
+
+# Datasets
+
+This imports all datasets and combines them into the main dataset ('dat') for analysis. 
+```{r}
+
+#Tissue data come from the latest online version of the google sheets dataset. Site covariates come from the 'covariates.csv' dataset. Photosynthesis data come from 'indHBout5.csv' but are not used further here.
+
+dat = read.csv("C:\\Users\\fridley\\OneDrive - Clemson University\\academic\\projects\\IOS_FranceJapan\\NSFIOSspreadsheetJDF11.csv")
+#dat = read.csv("/Users/fridley/OneDrive - Clemson University/academic/projects/IOS_FranceJapan/NSFIOSspreadsheetJDF11.csv")
+cov = read.csv("C:\\Users\\fridley\\OneDrive - Clemson University\\academic\\projects\\IOS_FranceJapan\\covariates.csv")
+#cov = read.csv("/Users/fridley/OneDrive - Clemson University/academic/projects/IOS_FranceJapan/covariates.csv")
+names(cov)[1:2] = c("Species","Region")
+cov$Region = as.factor(cov$Region)
+levels(cov$Region) = c("ENA","France","Japan")
+dat2 = merge(dat,cov,all.x=T)
+dat = dat2
+
+#merge in photosynthesis data
+hb = read.csv("C:\\Users\\fridley\\OneDrive - Clemson University\\academic\\projects\\IOS_FranceJapan\\IOS_git2\\indoutHB5.csv")
+#hb = read.csv("/Users/fridley/OneDrive - Clemson University/academic/projects/IOS_FranceJapan/IOS_git2/indoutHB5.csv")
+dat3 = merge(dat,hb,dat,by.x="ID",by.y="ID",all=T)
+dat3$region = as.factor(substr((dat3$Region),1,1))
+dat = dat3
+
+#remove Fallopia; already published
+dat4 = dat[dat$Species!="Fallopia japonica",]
+dat = dat4
+
+#make P. inserta just Parthenocissus sp. due to taxonomic questions about this group
+dat$Species[dat$Species=="Parthenocissus inserta"] = "Parthenocissus sp." 
+
+#fix dates
+dat$Date = as.Date(dat$Sampling.Date,format="%m/%d/%Y")
+dat$month = substr(dat$Date,7,7)
+
+```
+
+# Variables
+
+This inspects each dependent variable, log transforms when necessary, and standardizes all missing values or extreme outliers to NA.
+
+```{r}
+
+#total alkaloid content: units are mg atropine equivalents per g dry leaf mass
+dat$alk = dat$total_alkaloids_mg_g
+  #summary(dat$alk) #19 missing, mean is .39, median .21, seems log dist
+  #hist(log(dat$alk)) #lognormally distributed; probably analyze with logs
+dat$log.alk = log(dat$alk)
+dat$log.alk[dat$log.alk==-Inf] = NA
+
+#total cyanogenic glycoside content: units are mg KCN equivalents per g dry leaf mass
+dat$cyan = dat$cyan_mg_g
+  #summary(dat$cyan) #24 missing values
+  #hist(log(dat$cyan)) #normal distribution except for prunus
+dat$log.cyan = log(dat$cyan)
+dat$log.cyan[dat$log.cyan==-Inf] = NA
+
+#fiber
+dat$fib.sol = dat$Fiber..solubles...NSCs.
+dat$fib.hem = dat$Fiber..hemicellulose.
+dat$fib.cel = dat$Fiber..cellulose.
+dat$fib.lig = dat$Fiber..lignin.
+dat$fib.min = dat$Fiber..mineral.content.
+dat$fib.tot = dat$fib.hem + dat$fib.cel + dat$fib.lig #total fiber
+dat$fib.sol[dat$fib.sol<0] = NA
+    #rest centered on about 0.6
+  dat$fib.cel[dat$fib.cel<0] = NA
+    #rest centered on about .15
+  dat$fib.lig[dat$fib.lig<0] = NA
+  dat$fib.lig[dat$fib.lig>.8] = NA #couple of strange outliers
+    #rest centered on about 0.1
+  dat$fib.tot[dat$fib.tot<0] = NA
+  dat$fib.tot[dat$fib.tot>.75] = NA
+  dat$fib.min[dat$fib.min<0] = NA
+  dat$fib.min[dat$fib.min>.5] = NA #one outliers
+    #very small, nearly all <1%
+
+#leafN
+dat$leafN = as.numeric(dat$leafN)
+  #hist(dat$leafN) #roughly lognormal
+dat$log.leafN = log(dat$leafN)
+  #hist(dat$log.leafN) #normal
+
+#soluble protein content, units are mg per cm2 leaf (fresh)
+dat$water.prot = as.numeric(dat$Water.soluble.Protein.mg.cm2)
+dat$SDS.prot = as.numeric(dat$SDS.soluble.Protein.mg.cm2)
+dat$tot.prot = dat$water.prot + dat$SDS.prot
+  #hist(dat$water.prot) #looks lognormal
+  #hist(dat$SDS.prot) #lognormal
+  #hist(dat$tot.prot) #lognormal
+dat$log.water.prot = log(dat$water.prot)
+dat$log.water.prot[dat$log.water.prot=="NaN"] = NA
+dat$log.SDS.prot = log(dat$SDS.prot)
+dat$log.tot.prot = log(dat$tot.prot)
+
+#SLA
+dat$SLA = as.numeric(dat$Specific.leaf.area)
+  #summary(dat$SLA) #64 missing values due to missing samples (out of 409)
+hist(dat$SLA)
+  #two values over 1000 are likely in error
+dat$SLA[dat$SLA>1000] = NA
+dat$log.SLA = log(dat$SLA)
+  #hist(dat$log.SLA) #normal after log
+
+#make a second version (SLA2) where missing values are the average for the species
+dat$SLA2 = rep(NA,dim(dat)[1])
+for(i in 1:dim(dat)[1]) {
+  if(is.na(dat$SLA[i])==F) {dat$SLA2[i] = dat$SLA[i]; next}
+  sp = dat$Species[i]
+  dat$SLA2[i] = mean(dat$SLA[dat$Species==sp],na.rm=T)
+}
+  #hist(dat$SLA2); two nonsensical values for Agrostis stolonifera; omit
+dat$SLA2[dat$SLA2>1000] = NA
+
+#leaf C and CN
+dat$leafC = as.numeric(dat$leafC)
+dat$leafC[dat$leafC>60] = NA #3 extreme values
+  #hist(dat$leafC) #normal ish
+  #hist(log(dat$leafC)) #doesn't change much
+dat$log.leafC = log(dat$leafC)
+dat$leafCN = dat$leafC / dat$leafN
+dat$leafCN[dat$leafCN>60] = NA #outlier
+dat$log.leafCN = log(dat$leafCN)
+  
+#cell wall mass: units are mg per cm2 (ie, must divide by leaf disc area)
+dat$wall = as.numeric(dat$Cell.wall.mass) / as.numeric(dat$cell.wall.leaf.area.cm2)
+  #hist(dat$wall) #lognormal
+dat$log.wall = log(dat$wall)
+  dat$log.wall[dat$log.wall=="-Inf"] = NA
+
+#cell wall N
+#dat$wallN = as.numeric(dat$Cell.wall..N)
+#dat$log.wallN = log(dat$wallN)
+
+#Narea an PNUE
+dat$Nmass = (as.numeric(as.character(dat$leafN))/100) #g leaf N per g leaf
+dat$Narea = dat$Nmass / (dat$SLA/10000)
+dat$PNUE = dat$Asat/dat$Narea
+dat$Narea2 = dat$Nmass / (dat$SLA2/10000) #estimates for SLA NAs
+dat$PNUE2 = dat$Asat/dat$Narea2
+
+#Rubisco content
+dat$Rub.g = as.numeric((dat$Rubisco.content)) * dat$SLA2 #ug Rubisco per g leaf
+dat$RubN = dat$Rub.g * .16 #ug N in Rubisco per g leaf
+dat$Rub.perc = (dat$RubN / 1000000) / dat$Nmass #Rubisco g per g leaf N
+  #hist(dat$Rub.perc[dat$Rub.perc<1])
+  #summary(dat$Rub.perc) #just a few outliers; median is 30%
+
+```
+
+# Analyses
+
+## Home-away contrasts of each trait {.tabset}
+
+This fits a JAGS hierarchical Bayesian model of univariate home-away contrasts, for the purposes of imputing missing values and avoiding issues of multiple testing. Herbaceous and woody species are fit in separate models to avoid the complication of growth-form interactions in each model.
+
+### Graph: home-away posteriors
+
+```{r}
+library(R2jags)
+
+#limit dataset to home-away contrasts only, remove native-only observations
+ha = dat[dat$invader=="invader",c("Species","homeaway","region","woody","nativerange","log.SLA","log.leafN","log.leafC","log.leafCN","log.tot.prot","log.wall","fib.tot","log.alk","log.cyan")]
+#carrot should not be included
+ha = ha[ha$Species!="Daucus carota",]
+ha$home = as.numeric(ha$homeaway=="home") #1 = home
+ha$reg = as.numeric(as.factor(ha$region)) #1 = USA, 2 = France, 3 = Japan
+ha$natreg = as.numeric(as.factor(ha$nativerange)) #1 = USA, 2 = France, 3 = Japan; native range of species
+ha = ha[!is.na(ha$Species),]
+
+#two separate analyses by growth form
+wha = ha[ha$woody==1,] #151 observations
+  wha$cyan[wha$Species=="Prunus serotina"] = NA #remove black cherry from analysis, order of magnitude higher
+hha = ha[ha$woody==0,] #168 observations
+wha$spp = as.numeric(as.factor(wha$Species)) #14 different woody species, in alpha order
+hha$spp = as.numeric(as.factor(hha$Species)) #13 different herb species, in alpha order
+
+#model
+modHB <- "
+model {
+
+      for(i in 1:N) { 
+        for(d in 1:D) {
+          y[i,d] ~ dnorm(mu[i,d],tau[d])
+          mu[i,d] <- b1[natreg[i],d]*home[i] + b.spp[spp[i],d]
+          mu2[i,d] <- b1[natreg[i],d]*home[i] #ignores species REs (for marginal R2)
+          y.unscaled[i,d] ~ dnorm(mu3[d],tau2[d]) #for overall mean
+        }
+       }
+
+  for (d in 1:D) {
+    #spp random effects
+    for(i in 1:S) {
+        b.spp[i,d] ~ dnorm(0,tau.group[d])  #intercept varies by spp
+    }
+
+    #native region random slope
+    for(i in 1:3) {
+        b1[i,d] ~ dnorm(0,tau.reg[d])  #home effect varies by native region
+    }
+  }
+
+  # Priors for intercepts and slopes
+  for (d in 1:D) {
+    mu3[d] ~ dnorm(0,100) #overall means
+    tau.group[d] <- sigma.group[d]^-2 #converts sd to precision
+    sigma.group[d] ~ dunif(0, 100)  #uniform prior for standard deviation
+    tau.reg[d] <- sigma.reg[d]^-2 #converts sd to precision
+    sigma.reg[d] ~ dunif(0, 100)  #uniform prior for standard deviation
+    #tau.mu3[d] <- sigma.mu3[d]^-2 #converts sd to precision
+    #sigma.mu3[d] ~ dunif(0, 100)  #uniform prior for standard deviation
+    tau[d] ~ dgamma(0.01, 0.01)
+    tau2[d] ~ dgamma(0.01, 0.01)
+  }
+
+  # Covariance matrix
+  #precision[1:D, 1:D] ~ dwish(R[1:D,1:D], D)
+  
+  # Hyperprior for the covariance matrix
+  #for (j in 1:D) {
+  #  R[j, j] ~ dgamma(0.001, 0.001)
+  #  for (k in 1:(j-1)) {
+  #    R[j, k] <- 0
+  #    R[k, j] <- 0
+  #  }
+  #}
+
+  #add R2 (http://www.stat.columbia.edu/~gelman/research/unpublished/bayes_R2.pdf)
+  for(d in 1:D) {
+    #conditional (includes )
+    r2c[d] <- pow(sd(mu[1:N,d]),2) / ( pow(sd(mu[1:N,d]),2) + (1/tau[d]) )
+    r2m[d] <- pow(sd(mu2[1:N,d]),2) / ( pow(sd(mu2[1:N,d]),2) + (1/tau[d]) )
+  }
+
+}"
+write(modHB, "model.txt")
+
+#input lists for JAGS
+params = c("b1","r2c","r2m","y","mu3") #parameters to monitor
+#inits = function() list(b1[1]=rnorm(1),b1[2]=rnorm(1)) 
+inits = function() as.list(for(i in 1:D) {b1[i]=rnorm(1)}) 
+
+#run JAGS model: woodies
+
+d = wha #choose dataset
+S = length(unique(d$spp))
+N = dim(d)[1]
+y = as.matrix(d[,c("log.SLA","log.leafN","log.leafC","log.leafCN","log.tot.prot","log.wall","fib.tot","log.alk","log.cyan")])
+D = ncol(y)
+y.unscaled = y #save for mean estimate
+#scale Ys to unit variance
+for(i in 1:D) {
+  y[,i] = as.numeric(scale(y[,i]))
+} 
+y2= y #save for later
+
+input = list(N=N,S=S,y=y,D=D,home=d$home,spp=d$spp,natreg=d$natreg,y.unscaled=y.unscaled) #input data
+
+jagsW <- jags(model = "model.txt",quiet=T,data = input,param=params,
+        n.chains = 3, #number of separate MCMC chains
+            n.iter =5000, #number of iterations per chain
+            n.thin=3, #thinning
+            n.burnin = 500) #number of initial iterations to discard
+#jagsW
+
+attach.jags(jagsW,overwrite=T)
+b1m = apply(b1,c(2,3),mean) #home-away effect (positive: home higher)
+colnames(b1m) = colnames(y)
+rownames(b1m) = c("USA","France","Japan") #native region
+b125 = apply(b1,c(2,3),function(x)quantile(x,.025)) #home-away effect 2.5th quantile
+b197 = apply(b1,c(2,3),function(x)quantile(x,.975)) #home-away effect 97.5th quantile
+colnames(b1m) = colnames(y)
+rownames(b1m) = c("USA","France","Japan") #native region
+
+woody.mu = mu3 #save for woody-herb contrast
+w125 = apply(mu3,2,function(x)quantile(x,.025)) #home-away effect 2.5th quantile
+w197 = apply(mu3,2,function(x)quantile(x,.975)) #home-away effect 97.5th quantile
+
+#save predicted trait values for multivariate analysis
+yWpred = apply(y,c(2,3),mean) 
+dWpred = data.frame(d[,1:5],yWpred)
+names(dWpred)[6:14] = c("log.SLA","log.leafN","log.leafC","log.leafCN","log.tot.prot","log.wall","fib.tot","log.alk","log.cyan")
+
+#R2s
+margR2 = round(apply(r2m,2,mean),2); names(margR2) = colnames(y)
+condR2 = round(apply(r2c,2,mean),2)
+R2W = data.frame(margR2,condR2)
+#R2
+  #cyan condR2 is due to huge effect of black cherry
+
+#labels
+pretty = colnames(y)
+pretty[2] = "N"
+pretty[3] = "C"
+pretty[4] = "CN"
+pretty[5] = expression("Protein")
+pretty[6] = expression("Cell wall")
+pretty[7] = expression("Fiber")
+pretty[8] = expression("Alkaloids")
+pretty[9] = expression("Cyan")
+
+#uncomment to create pdf graph of posteriors
+#pdf(file="C:/Users/fridley/OneDrive - Clemson University/academic/projects/IOS_FranceJapan/manuscripts/defense/homeAway.pdf",width=8,height=6)
+
+#plot posteriors
+par(oma=c(1,7,3,1),mfrow=c(2,3),mar=c(5,.1,1,.1))
+plot(b1m[3,],c(1:9),xlim=c(-2,2),pch=19,cex=1.2,yaxt="n",ylab="",xlab="",ylim=c(.5,9.5),col="darkorange",cex.axis=1.3)
+axis(2,labels=pretty,at=c(1:9),las=2,cex.axis=1.5)
+abline(v=0,lty=2,lwd=2,col="gray")
+arrows(b125[3,],c(1:9),b197[3,],c(1:9),angle=90,length=.03,code=3,lwd=2,col="darkorange")
+mtext("A) Woody",side=3,at=-3.5,line=1.9,cex=1.5,adj=0)
+mtext("Japan",side=3,col="darkorange",line=.9)
+mtext(c("away","home"),side=3,at=c(-.8,.8),cex=.7,col="darkgray")
+arrows(1.3,10.1,1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+arrows(-1.3,10.1,-1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+plot(b1m[2,],c(1:9),xlim=c(-2,2),pch=19,cex=1.2,yaxt="n",ylab="",xlab="",ylim=c(.5,9.5),col="purple",cex.axis=1.3)
+abline(v=0,lty=2,lwd=2,col="gray")
+arrows(b125[2,],c(1:9),b197[2,],c(1:9),angle=90,length=.03,code=3,lwd=2,col="purple")
+mtext("France",side=3,col="purple",line=.9)
+mtext(c("away","home"),side=3,at=c(-.8,.8),cex=.7,col="darkgray")
+arrows(1.3,10.1,1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+arrows(-1.3,10.1,-1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+plot(b1m[1,],c(1:9),xlim=c(-2,2),pch=19,cex=1.2,yaxt="n",ylab="",xlab="",ylim=c(.5,9.5),col="darkgreen",cex.axis=1.3)
+mtext("USA",side=3,col="darkgreen",line=.9)
+mtext(c("away","home"),side=3,at=c(-.8,.8),cex=.7,col="darkgray")
+arrows(1.3,10.1,1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+arrows(-1.3,10.1,-1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+abline(v=0,lty=2,lwd=2,col="gray")
+arrows(b125[1,],c(1:9),b197[1,],c(1:9),angle=90,length=.03,code=3,lwd=2,col="darkgreen")
+
+
+#run JAGS model: herbs
+
+d = hha #choose dataset
+S = length(unique(d$spp))
+N = dim(d)[1]
+y = as.matrix(d[,c("log.SLA","log.leafN","log.leafC","log.leafCN","log.tot.prot","log.wall","fib.tot","log.alk","log.cyan")])
+D = ncol(y)
+y.unscaled = y #save for mean estimate
+#scale Ys to unit variance
+for(i in 1:D) {
+  y[,i] = as.numeric(scale(y[,i]))
+} 
+
+input = list(N=N,S=S,y=y,D=D,home=d$home,spp=d$spp,natreg=d$natreg,y.unscaled=y.unscaled) #input data
+
+jagsH <- jags(model = "model.txt",quiet=T,data = input,param=params,
+        n.chains = 3, #number of separate MCMC chains
+            n.iter =5000, #number of iterations per chain
+            n.thin=3, #thinning
+            n.burnin = 500) #number of initial iterations to discard
+#jagsH
+
+attach.jags(jagsH,overwrite=T)
+b1m = apply(b1,c(2,3),mean) #home-away effect (positive: home higher)
+colnames(b1m) = colnames(y)
+rownames(b1m) = c("USA","France","Japan") #native region
+b125 = apply(b1,c(2,3),function(x)quantile(x,.025)) #home-away effect 2.5th quantile
+b197 = apply(b1,c(2,3),function(x)quantile(x,.975)) #home-away effect 97.5th quantile
+colnames(b1m) = colnames(y)
+rownames(b1m) = c("USA","France","Japan") #native region
+
+herb.mu = mu3 #save for woody-herb contrast
+
+#save predicted trait values for multivariate analysis
+yHpred = apply(y,c(2,3),mean) 
+dHpred = data.frame(d[,1:5],yHpred)
+names(dHpred)[6:14] = c("log.SLA","log.leafN","log.leafC","log.leafCN","log.tot.prot","log.wall","fib.tot","log.alk","log.cyan")
+
+#R2s
+margR2 = round(apply(r2m,2,mean),2); names(margR2) = colnames(y)
+condR2 = round(apply(r2c,2,mean),2)
+R2H = data.frame(margR2,condR2)
+#R2H
+
+
+#plot posteriors
+#par(oma=c(1,7,3,1),mfrow=c(1,3),mar=c(5,.1,1,.1))
+plot(b1m[3,],c(1:9),xlim=c(-2,2),pch=19,cex=1.2,yaxt="n",ylab="",xlab="",ylim=c(.5,9.5),col="darkorange",cex.axis=1.3,type="n",xaxt="n",yaxt="n",bty="n")
+#axis(2,labels=pretty,at=c(1:9),las=2,cex.axis=1.5)
+#abline(v=0,lty=2,lwd=2,col="gray")
+#arrows(b125[3,],c(1:9),b197[3,],c(1:9),angle=90,length=.03,code=3,lwd=2,col="darkorange")
+#mtext("Native to:",side=3,at=-2.5,line=1.6)
+mtext("B) Herbaceous",side=3,at=-3.5,line=1.7,cex=1.5,adj=0)
+#mtext("Japan",side=3,col="darkorange",line=.9)
+#mtext(c("away","home"),side=3,at=c(-.8,.8),cex=.7,col="darkgray")
+#arrows(1.3,10.1,1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+#arrows(-1.3,10.1,-1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+plot(b1m[2,],c(1:9),xlim=c(-2,2),pch=19,cex=1.2,yaxt="n",ylab="",xlab="",ylim=c(.5,9.5),col="purple",cex.axis=1.3)
+axis(2,labels=pretty,at=c(1:9),las=2,cex.axis=1.5)
+abline(v=0,lty=2,lwd=2,col="gray")
+arrows(b125[2,],c(1:9),b197[2,],c(1:9),angle=90,length=.03,code=3,lwd=2,col="purple")
+mtext("Standardized Coefficient",side=1,cex=1,line=3.5)
+mtext("France",side=3,col="purple",line=.9)
+mtext(c("away","home"),side=3,at=c(-.8,.8),cex=.7,col="darkgray")
+arrows(1.3,10.1,1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+arrows(-1.3,10.1,-1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+plot(b1m[1,],c(1:9),xlim=c(-2,2),pch=19,cex=1.2,yaxt="n",ylab="",xlab="",ylim=c(.5,9.5),col="darkgreen",cex.axis=1.3)
+mtext("USA",side=3,col="darkgreen",line=.9)
+mtext(c("away","home"),side=3,at=c(-.8,.8),cex=.7,col="darkgray")
+arrows(1.3,10.1,1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+arrows(-1.3,10.1,-1.9,10.1,xpd=T,length=.08,lwd=2,col="darkgray")
+abline(v=0,lty=2,lwd=2,col="gray")
+arrows(b125[1,],c(1:9),b197[1,],c(1:9),angle=90,length=.03,code=3,lwd=2,col="darkgreen")
+#dev.off() #for saving to pdf
+
+```
+
+### Compare mean differences in traits across herbs and woodies
+
+```{r}
+#t tests for each trait for herb-woody
+t.test(dat$cyan[dat$woody==0&dat$Species!="Prunus serotina"],dat$cyan[dat$woody==1&dat$Species!="Prunus serotina"])
+  #cyan: P<0.001
+t.test(dat$alk[dat$woody==0],dat$alk[dat$woody==1])
+  #alk: P=.991
+t.test(dat$fib.tot[dat$woody==0],dat$fib.tot[dat$woody==1])
+  #fiber: P<0.001
+t.test(dat$tot.prot[dat$woody==0],dat$tot.prot[dat$woody==1])
+  #prot: P=.1679
+t.test(dat$wall[dat$woody==0],dat$wall[dat$woody==1])
+  #wall: P=.2654
+t.test(dat$leafCN[dat$woody==0],dat$leafCN[dat$woody==1])
+  #leafCN: P=.256
+t.test(dat$leafC[dat$woody==0],dat$leafC[dat$woody==1])
+  #leaf C: P=.0002
+t.test(dat$leafN[dat$woody==0],dat$leafN[dat$woody==1])
+  #leaf N: P=.1363
+t.test(dat$SLA[dat$woody==0],dat$SLA[dat$woody==1])
+  #SLA: P<0.001
+
+
+#plot data for supplement
+
+pdf("herbwoody_contrast.pdf",width=8,height=8)
+
+par(mfcol=c(3,3),mar=c(5,5,1,1),oma=c(.5,.5,.5,.1))
+wood = dat$woody
+x = dat$cyan
+xnames = c("H","W")
+boxcol = c("lightgray","darkgray")
+clab = 1.5
+cax = 1.4
+boxplot(x[wood==0&dat$Species!="Prunus serotina"],x[wood==1&dat$Species!="Prunus serotina"],names=xnames,
+        ylab = expression('Cyan (mg g'^-1*')'),col=boxcol,cex.lab=clab,cex.axis=cax)
+mtext("***",side=3,cex=2,line=-3)
+x = dat$alk
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = expression('Alkaloids (mg g'^-1*')'),col=boxcol,cex.lab=clab,cex.axis=cax)
+x = dat$fib.tot*100
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = "Fiber (%)",col=boxcol,cex.lab=clab,cex.axis=cax)
+mtext("***",side=3,cex=2,line=-3)
+x = dat$tot.prot
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = expression('Protein (mg cm'^-2*')'),col=boxcol,cex.lab=clab,cex.axis=cax)
+x = dat$wall
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = expression('Cell wall (mg cm'^-2*')'),col=boxcol,cex.lab=clab,cex.axis=cax)
+x = dat$leafCN
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = "C:N",col=boxcol,cex.lab=clab,cex.axis=cax)
+x = dat$leafC
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = "C (%)",col=boxcol,cex.lab=clab,cex.axis=cax)
+mtext("***",side=3,cex=2,line=-3)
+x = dat$leafN
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = "N (%)",col=boxcol,cex.lab=clab,cex.axis=cax)
+x = dat$SLA
+boxplot(x[wood==0],x[wood==1],names=xnames,ylab = expression('SLA (cm'^2* ' g'^-1*')'),col=boxcol,cex.lab=clab,cex.axis=cax)
+mtext("***",side=3,cex=2,line=-3)
+
+dev.off()
+
+```
+
+## Multivariate analysis {.tabset}
+
+### PCA analysis on HB-imputed data
+
+```{r}
+
+#saved matrices are dWpred for woodies and dHpred for herbs; values are already Z scaled
+
+#woodies
+pcaW = princomp(dWpred[,6:14])
+#pcaW
+#summary(pcaW)
+  #PC1 = 27%, PC2 = 19%, PC3 = 15%
+#add PCA axes to dWpred
+dWpred$PC1 = pcaW$scores[,1]
+dWpred$PC2 = pcaW$scores[,2]
+
+#permanova: not sure this is useful
+library(vegan)
+#adonis2(dWpred[,6:14]~dWpred$homeaway*dWpred$region,method="euclidean",permutations=9999)
+
+#tests of PC1 and PC2
+library(lme4)
+library(lmerTest)
+#lmerW1 = lmer(PC1 ~ homeaway + (1|Species) + (homeaway|nativerange),data=dWpred)
+  #treating interaction as random effect does not converge  
+lmerW1 = lmer(PC1 ~ homeaway*nativerange + region + (1|Species),data=dWpred)
+  #this converges
+summary(lmerW1)
+anova(lmerW1)
+  #PC1 strongly different for France
+#ranef(lmerH1)
+
+lmerW2 = lmer(PC2 ~ homeaway*nativerange + region + (1|Species),data=dWpred)
+summary(lmerW2)
+anova(lmerW2)
+  #PC2 strongly differenet for France
+#ranef(lmerW2)
+
+
+#herbs
+pcaH = princomp(dHpred[,6:14])
+  #pcaH
+  #summary(pcaH)
+  #PC1 = 27%, PC2 = 20%, PC3 = 14%
+
+#add PCA axes to dWpred
+dHpred$PC1 = pcaH$scores[,1]
+dHpred$PC2 = pcaH$scores[,2]
+
+#permanova: not sure this is useful
+#library(vegan)
+#adonis2(dHpred[,6:14]~dHpred$homeaway*dHpred$region,method="euclidean",permutations=9999)
+
+#tests of PC1 and PC2
+#lmerH1 = lmer(PC1 ~ homeaway + (1|Species) + (homeaway|nativerange),data=dHpred)
+  #treating interaction as random effect does not converge  
+lmerH1 = lmer(PC1 ~ homeaway*nativerange + region + (1|Species),data=dHpred)
+  #this converges
+summary(lmerH1)
+anova(lmerH1)
+  #nothing significant for PC1 in terms of home-away contrasts or region
+#ranef(lmerH1)
+
+lmerH2 = lmer(PC2 ~ homeaway*nativerange + region + (1|Species),data=dHpred)
+summary(lmerH2)
+anova(lmerH2)
+  #US is different than both France and Japan; F test P=0.06 for homeaway
+#ranef(lmerH2)
+
+```
+
+### Plotting PCAs
+
+```{r, fig.width=8,fig.height=8}
+#colors    
+makeTransparent<-function(someColor, alpha=150)
+{   newColor<-col2rgb(someColor)
+apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+                                            blue=curcoldata[3],alpha=alpha, maxColorValue=255)}) }
+c1 = makeTransparent("darkgreen") #ENA
+c2 = makeTransparent("purple")  #France
+c3 = makeTransparent("darkorange") #Japan
+colvec = c("darkgreen","purple","darkorange")
+
+#labels
+pretty = colnames(dHpred[,6:14])
+pretty[6] = expression("Cell wall")
+pretty[7] = expression("Fiber")
+pretty[8] = expression("Alkaloids")
+pretty[9] = expression("Cyan")
+pretty[4] = expression("CN")
+pretty[2] = expression("N")
+pretty[3] = expression("C")
+pretty[1] = expression("SLA")
+pretty[5] = expression("Protein")
+
+x = dWpred$PC1
+y = dWpred$PC2
+ha = as.numeric(as.factor(dWpred$homeaway))
+reg = as.numeric(as.factor(dWpred$nativerange))
+Wg = factor(paste(dWpred$nativerange,dWpred$homeaway))
+Wg.col = c("darkgreen","darkgreen","purple","purple","darkorange","darkorange")  
+
+
+#pdf(file="C:/Users/fridley/OneDrive - Clemson University/academic/projects/IOS_FranceJapan/manuscripts/defense/PCA_4panel.pdf",width=8,height=8) #uncommment for pdf
+
+par(mar=c(5,5,3,1),mfrow=c(2,2),oma=c(1,1,3,1))
+plot(x,y,xlab="PC1 (27%)",ylab="PC2 (20%)",cex.lab=1.5,cex.axis=1.4,
+     col=c(c1,c2,c3)[reg],pch=c(19,21)[ha],cex=1.2,ylim=c(-4,4),xlim=c(-4,4.3))
+points(x,y,xlab="PC1 (27%)",ylab="PC2 (20%)",cex.lab=1.5,cex.axis=1.4,
+       col=colvec[reg],pch=21,cex=1.2,ylim=c(-6,6),lwd=2)
+ordiellipse(pcaW, Wg, display="sites",alpha=40,lty=c(1,2,1,2,1,2),conf=.85,kind="sd",lwd=2,
+            col=Wg.col,draw="polygon")
+ordiellipse(pcaW, Wg, display="sites",alpha=40,lty=c(1,2,1,2,1,2),conf=.85,kind="sd",lwd=2,
+            col=Wg.col,draw="lines")
+points(c(3.5,3.5),c(-4,-3.3),pch=c(19,21),cex=2)
+text(c(2.5,2.5),c(-4,-3.3),c("Away","Home"),cex=1)
+segments(c(4,4),c(-4,-3.3),c(4.7,4.7),c(-4,-3.3),lty=c(1,2),lwd=2)
+mtext("A) Woody",side=3,at=-6,cex=1.7,line=1.5,adj=0)
+
+plot(x,y,xlab="PC1 (27%)",ylab="PC2 (20%)",cex.lab=1.5,cex.axis=1.4,col=c(c1,c2,c3)[reg],
+     pch=c(19,21)[ha],cex=2.4,type="n",ylim=c(-4,4),xlim=c(-4,4.3))
+f = 5.5
+arrows(0,0,pcaW$loadings[,1]*f,pcaW$loadings[,2]*f,col=adjustcolor("gray50", alpha.f = .5),
+       pch=21,cex=1,lwd=2.5, length=.07, angle=30)
+for (i in 1:(length(pcaW$loadings[,2])-1)){
+  text(
+    pcaW$loadings[i,1]*f*1.15,pcaW$loadings[i,2]*f*1.15,
+    pretty[i],
+    col="black",
+    cex=1.1,
+    xpd=T, 
+  )
+}
+#add Cyan (was over top of Fiber)
+text(.5,-1.8,pretty[9],cex=1.1,xpd=T)
+
+#herbs
+x = dHpred$PC1
+y = dHpred$PC2
+ha = as.numeric(as.factor(dHpred$homeaway))
+reg = as.numeric(as.factor(dHpred$nativerange))
+Hg = factor(paste(dHpred$nativerange,dHpred$homeaway))
+Hg.col = c("darkgreen","darkgreen","purple","purple")
+
+plot(x,y,xlab="PC1 (27%)",ylab="PC2 (20%)",cex.lab=1.5,cex.axis=1.4,
+     col=c(c1,c2,c3)[reg],pch=c(19,21)[ha],cex=1.2,ylim=c(-4,4),xlim=c(-4,4.3))
+points(x,y,xlab="PC1 (27%)",ylab="PC2 (20%)",cex.lab=1.5,cex.axis=1.4,
+       col=colvec[reg],pch=21,cex=1.2,ylim=c(-6,6),lwd=2)
+ordiellipse(pcaH, Hg, display="sites",alpha=40,lty=c(1,2,1,2),conf=.85,kind="sd",lwd=2,
+            col=Wg.col,draw="polygon")
+ordiellipse(pcaH, Hg, display="sites",alpha=40,lty=c(1,2,1,2),conf=.85,kind="sd",lwd=2,
+            col=Wg.col,draw="lines")
+points(c(3.5,3.5),c(-4,-3.3),pch=c(19,21),cex=2)
+text(c(2.5,2.5),c(-4,-3.3),c("Away","Home"),cex=1)
+segments(c(4,4),c(-4,-3.3),c(4.7,4.7),c(-4,-3.3),lty=c(1,2),lwd=2)
+mtext("B) Herbaceous",side=3,at=-6,cex=1.7,line=1.5,adj=0)
+plot(x,y,xlab="PC1 (27%)",ylab="PC2 (20%)",cex.lab=1.5,cex.axis=1.4,col=c(c1,c2,c3)[reg],
+     pch=c(19,21)[ha],cex=2.4,type="n",ylim=c(-4,4),xlim=c(-4,4.3))
+f = 5.5
+arrows(0,0,pcaH$loadings[,1]*f,pcaH$loadings[,2]*f,col=adjustcolor("gray50", alpha.f = .5),
+       pch=21,cex=1,lwd=2.5, length=.07, angle=30)
+for (i in 1:(length(pcaH$loadings[,2]))){
+  if(i==8) next
+  text(
+    pcaH$loadings[i,1]*f*1.15,pcaH$loadings[i,2]*f*1.15,
+    pretty[i],
+    col="black",
+    cex=1.1,
+    xpd=T, 
+  )
+}
+#add Alkaloids (was over top of Protein)
+text(-.5,-3.8,pretty[8],cex=1.1,xpd=T)
+#dev.off()
+
+```
+
+## New analysis: mechanisms of invasion
+
+This analysis compares trait values across four populations: non-invasive native species, invasive species in that region (in their away range), home range values of the invaders, and, when available, other species co-occurring in the home range of the invader (native to that region and non-invasive). 
+
+### Woody species
+
+```{r, fig.width=10,fig.height=6}
+
+###WOODY
+form = 1 #1 is woody
+
+pdf("Woody_regions.pdf",width=10,height=8)
+
+par(oma=c(1,3,1,0),mfcol=c(5,4),mar=c(.5,2,.5,0))
+
+for(k in 1:2) { #native region loop
+  if(k==1) reg = "ENA" else reg = "France"
+
+for(j in 1:5) {
+  
+if(j==1) {
+  dat2 = dat
+  dat2 = dat2[dat2$Species!="Prunus serotina",] #extreme outlier
+  x = dat2$log.cyan 
+  yval = c(2,5,10,20,50)
+  lab.exp = expression("Cyan")
+  yLim = log(c(min(yval),max(yval)))
+}
+
+if(j==2) {  
+  x = dat$log.alk
+  yval = c(.02,.1,.2,.5,1,3)
+  lab.exp = expression("Alkaloids")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==3) { 
+x = dat$fib.tot 
+yval = c(.2,.3,.4,.5,.6,.7)
+lab.exp = expression("Fiber")
+yLim = (c(min(yval),max(yval)))
+}
+
+if(j==4) {
+  x = dat$log.wall
+  yval = c(.1,.2,.5,1,2,5)
+  lab.exp = expression("Cell wall")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==5) { 
+x = dat$log.tot.prot
+yval = c(.2,.5,1,2)
+lab.exp = expression("Protein")
+yLim = log(c(min(yval),max(yval)))
+}
+  
+if(j==6) { 
+  x = dat$log.leafCN
+  yval = c(10,15,20,30,40)
+lab.exp = expression("CN")
+yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==7) { 
+  x = dat$log.leafC
+  yval = c(40,42,44,46,50)
+lab.exp = expression("C")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==8) { 
+  x = dat$log.leafN
+  yval = c(1,1.5,2,3,5)
+lab.exp = expression("N")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==9) { 
+  x = dat$log.SLA
+  yval = c(100,200,300,400,600)
+lab.exp = expression("SLA")
+yLim = log(c(min(yval),max(yval)))
+}      
+  
+nat.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #distribution for native species
+spp.nat = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #list of native species
+away.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #distribution for invader away species
+spp.away = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away species
+nr.away = dat$nativerange[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away native range
+home.val = x[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species home values
+spp.home = dat$Species[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species at home
+nr.home = dat$nativerange[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader away native range
+homeother.val = x[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.spp = dat$Species[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.nr = substr(dat$Region[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg],1,1)
+
+reg.lab = levels(as.factor(nr.away))
+mean.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+se.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+
+#statistics
+#away range vs. co-occurring natives
+#d = data.frame(val=c(nat.val,away.val),spp=c(spp.nat,spp.away),native=c(rep(1,length(nat.val)),rep(0,length(away.val))))
+#d = na.exclude(d)
+#lme1 = lmer(val~native+(1|spp),d) #based on below simulation, this seems legit
+#pval = summary(lme1)$coef[2,5]
+#symb1 = "!!"; if(pval<0.05&pval>0.01) symb1 = "*"; if(pval<0.01&pval>0.001) symb1 = "**"
+#if(pval<0.001) symb1 = "***"
+#invader home values vs. other home values
+#if(k==2) {
+ # home.valF = home.val[nr.home=="F"]; spp.homeF = spp.home[nr.home=="F"]
+#  d = data.frame(val=c(home.valF,homeother.val),spp=c(spp.homeF,homeother.spp),native=c(rep(1,length(home.valF)),rep(0,length(homeother.val))))} else {
+#  d = data.frame(val=c(home.val,homeother.val),spp=c(spp.home,homeother.spp),native=c(rep(1,length(home.val)),rep(0,length(homeother.val))))  
+#}
+#d = na.exclude(d)
+#lme1 = lmer(val~native+(1|spp),d) #based on below simulation, this seems legit
+#pval = summary(lme1)$coef[2,5]
+#symb3 = "!!"; if(pval<0.05&pval>0.01) symb3 = "*"; if(pval<0.01&pval>0.001) symb3 = "**"
+#if(pval<0.001) symb3 = "***"
+
+#calculate means and SEs of above per home region
+for(i in 1:length(reg.lab)) {
+  #mean.mat[1:2,1] = mean(nat.val,na.rm=T) #first column is just mean of local natives
+  #se.mat[1:2,1] = sd(nat.val,na.rm=T)/sqrt(length(x[!is.na(x)]))
+  mean.mat[,2] = tapply(away.val,nr.away,function(x)mean(x,na.rm=T))
+  se.mat[,2] = tapply(away.val,nr.away,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  mean.mat[,3] = tapply(home.val,nr.home,function(x)mean(x,na.rm=T))
+  se.mat[,3] = tapply(home.val,nr.home,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  mean.mat[,4] = tapply(homeother.val,homeother.nr,function(x)mean(x,na.rm=T))
+  se.mat[,4] = tapply(homeother.val,homeother.nr,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+}
+if(k==1) {mean.mat[2,4] = NA; se.mat[2,4] = NA}
+mean.mat[,4] = NA; se.mat[,4] = NA
+
+x1 = c(1,1.95,2.95,4)-1
+x2 = c(1,2.05,3.05,4)-1
+
+if(k==1) {
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="purple")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="darkgreen")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="purple",type="b")
+points(x2,mean.mat[2,],cex=1.5,pch=19,col="darkorange",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="purple",lwd=2)
+arrows(x2,mean.mat[2,]+se.mat[2,],x2,mean.mat[2,]-se.mat[2,],angle=90,length=.05,code=3,col="darkorange",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=c(0,1.1,1.9,3),side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+boxplot(homeother.val,col=NA,at=3,add=T,axes=F,border="purple")
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="darkgreen",lty=2)
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+mtext(lab.exp,side=2,line=1.5)
+if(j==1) {mtext("In USA",side=3,at=.5,cex=1,line=0,col="darkgreen")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+#mtext(symb1,side=3,at=.5,line=-2,cex=2,col="black")
+#mtext(symb3,side=3,at=2.5,line=-2,cex=2,col="black")
+
+}
+
+if(k==2) {
+par(mar=c(.5,0,.5,2))
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="darkgreen")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="purple")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="darkgreen",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="darkgreen",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=c(0,1.1,1.9,3),side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="purple",lty=2)
+boxplot(homeother.val,col=NA,at=3,add=T,axes=F,border="darkgreen")
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+if(j==1) {mtext("In France",side=3,at=.5,cex=1,line=0,col="purple")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+#mtext(symb,side=3,at=.5,line=-2,cex=2,col="black")
+#mtext(symb3,side=3,at=2.5,line=-2,cex=2,col="black")
+
+}
+} #trait loop
+} #region loop
+
+
+for(k in 1:2) { #native region loop
+  if(k==1) reg = "ENA" else reg = "France"
+
+for(j in 6:9) {
+  
+if(j==1) {
+  dat2 = dat
+  dat2 = dat2[dat2$Species!="Prunus serotina",] #extreme outlier
+  x = dat2$log.cyan 
+  yval = c(2,5,10,20,50)
+  lab.exp = expression("Cyan")
+  yLim = log(c(min(yval),max(yval)))
+}
+
+if(j==2) {  
+  x = dat$log.alk
+  yval = c(.02,.1,.2,.5,1,3)
+  lab.exp = expression("Alkaloids")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==3) { 
+x = dat$fib.tot 
+yval = c(.2,.3,.4,.5,.6,.7)
+lab.exp = expression("Fiber")
+yLim = (c(min(yval),max(yval)))
+}
+
+if(j==4) {
+  x = dat$log.wall
+  yval = c(.1,.2,.5,1,2,5)
+  lab.exp = expression("Cell wall")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==5) { 
+x = dat$log.tot.prot
+yval = c(.2,.5,1,2)
+lab.exp = expression("Protein")
+yLim = log(c(min(yval),max(yval)))
+}
+  
+if(j==6) { 
+  x = dat$log.leafCN
+  yval = c(10,15,20,30,40)
+lab.exp = expression("CN")
+yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==7) { 
+  x = dat$log.leafC
+  yval = c(40,42,44,46,50)
+lab.exp = expression("C")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==8) { 
+  x = dat$log.leafN
+  yval = c(1,1.5,2,3,5)
+lab.exp = expression("N")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==9) { 
+  x = dat$log.SLA
+  yval = c(100,200,300,400,600)
+lab.exp = expression("SLA")
+yLim = log(c(min(yval),max(yval)))
+}      
+  
+nat.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #distribution for native species
+spp.nat = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #list of native species
+away.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #distribution for invader away species
+spp.away = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away species
+nr.away = dat$nativerange[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away native range
+home.val = x[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species home values
+spp.home = dat$Species[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species at home
+nr.home = dat$nativerange[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader away native range
+homeother.val = x[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.spp = dat$Species[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.nr = substr(dat$Region[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg],1,1)
+
+reg.lab = levels(as.factor(nr.away))
+mean.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+se.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+
+#statistics
+#away range vs. co-occurring natives
+#d = data.frame(val=c(nat.val,away.val),spp=c(spp.nat,spp.away),native=c(rep(1,length(nat.val)),rep(0,length(away.val))))
+#d = na.exclude(d)
+#lme1 = lmer(val~native+(1|spp),d) #based on below simulation, this seems legit
+#pval = summary(lme1)$coef[2,5]
+#symb = "!!"; if(pval<0.05&pval>0.01) symb = "*"; if(pval<0.01&pval>0.001) symb = "**"
+#if(pval<0.001) symb = "***"
+#print(pval)
+
+#calculate means and SEs of above per home region
+for(i in 1:length(reg.lab)) {
+  #mean.mat[1:2,1] = mean(nat.val,na.rm=T) #first column is just mean of local natives
+  #se.mat[1:2,1] = sd(nat.val,na.rm=T)/sqrt(length(x[!is.na(x)]))
+  mean.mat[,2] = tapply(away.val,nr.away,function(x)mean(x,na.rm=T))
+  se.mat[,2] = tapply(away.val,nr.away,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  mean.mat[,3] = tapply(home.val,nr.home,function(x)mean(x,na.rm=T))
+  se.mat[,3] = tapply(home.val,nr.home,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  mean.mat[,4] = tapply(homeother.val,homeother.nr,function(x)mean(x,na.rm=T))
+  se.mat[,4] = tapply(homeother.val,homeother.nr,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+}
+if(k==1) {mean.mat[2,4] = NA; se.mat[2,4] = NA}
+mean.mat[,4] = NA; se.mat[,4] = NA
+
+x1 = c(1,1.95,2.95,3.95)-1
+x2 = c(1,2.05,3.05,4.05)-1
+
+if(k==1) {
+  par(mar=c(.5,2,.5,0))
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="purple")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="darkgreen")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="purple",type="b")
+points(x2,mean.mat[2,],cex=1.5,pch=19,col="darkorange",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="purple",lwd=2)
+arrows(x2,mean.mat[2,]+se.mat[2,],x2,mean.mat[2,]-se.mat[2,],angle=90,length=.05,code=3,col="darkorange",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=c(0,1.1,1.9,3),side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+boxplot(homeother.val,col=NA,at=3,add=T,axes=F,border="purple")
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="darkgreen",lty=2)
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+mtext(lab.exp,side=2,line=1.5)
+if(j==6) {mtext("In USA",side=3,at=.5,cex=1,line=0,col="darkgreen")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+#mtext(symb,side=3,at=.5,line=-2,cex=1,col="black")
+}
+
+if(k==2) {
+par(mar=c(.5,0,.5,2))
+if(j==6) {plot(1,1,type="n",bty="n",axes=F)}
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="darkgreen")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="purple")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="darkgreen",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="darkgreen",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=c(0,1.1,1.9,3),side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="purple",lty=2)
+boxplot(homeother.val,col=NA,at=3,add=T,axes=F,border="darkgreen")
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+if(j==6) {mtext("In France",side=3,at=.5,cex=1,line=0,col="purple")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+#mtext(symb,side=3,at=.5,line=-2,cex=1,col="black")
+}
+} #trait loop
+} #region loop
+
+#legend
+plot(c(.5,.5,.5),c(-.5,1.5,3.5)-1,col=c("darkgreen","purple","darkorange"),bty="n",xaxt="n",yaxt="n",ylim=c(-2,6),xlab="",ylab="",xlim=c(-1,5),pch=19,cex=2)
+text(c(1,1,1),c(-.5,1.5,3.5)-1,c("USA","France","Japan"),col=c("darkgreen","purple","darkorange"),cex=1.7,adj=0)
+text(1.7,4.3,"Native range",cex=1.8)
+#polygon(x=c(-.5,4,4,-.5),y=c(-2,-2,6,6)-.3)
+dev.off()
+
+```
+
+
+### Herbaceous species
+
+```{r, fig.width=10,fig.height=6}
+
+###HERBACEOUS
+form = 0 #1 is woody
+
+pdf("Herb_regions.pdf",width=12,height=8)
+
+par(oma=c(1,3,1,0),mfcol=c(5,6),mar=c(.5,2,.5,0))
+
+halab = c(0,1.05,1.95,3)
+
+for(k in 1:3) { #native region loop
+  if(k==1) reg = "ENA" 
+  if(k==2) reg = "France"
+  if(k==3) reg = "Japan"
+  
+for(j in 1:5) {
+  
+if(j==1) {
+  x = dat$log.cyan 
+  yval = c(2,5,10,20,60)
+  lab.exp = expression("Cyan")
+  yLim = log(c(min(yval),max(yval)))
+}
+
+if(j==2) {  
+  x = dat$log.alk
+  yval = c(.02,.1,.2,.5,1,3)
+  lab.exp = expression("Alkaloids")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==3) { 
+x = dat$fib.tot 
+yval = c(.1,.2,.3,.4,.5,.7)
+lab.exp = expression("Fiber")
+yLim = (c(min(yval),max(yval)))
+}
+
+if(j==4) {
+  x = dat$log.wall
+  yval = c(.05,.2,.5,1,2,5)
+  lab.exp = expression("Cell wall")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==5) { 
+x = dat$log.tot.prot
+yval = c(.2,.5,1,2)
+lab.exp = expression("Protein")
+yLim = log(c(min(yval),max(yval)))
+}
+  
+if(j==6) { 
+  x = dat$log.leafCN
+  yval = c(10,15,20,30,40)
+lab.exp = expression("CN")
+yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==7) { 
+  x = dat$log.leafC
+  yval = c(40,42,44,46,50)
+lab.exp = expression("C")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==8) { 
+  x = dat$log.leafN
+  yval = c(1,1.5,2,3,5)
+lab.exp = expression("N")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==9) { 
+  x = dat$log.SLA
+  yval = c(100,200,300,400,600)
+lab.exp = expression("SLA")
+yLim = log(c(min(yval),max(yval)))
+}      
+  
+nat.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #distribution for native species
+spp.nat = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #list of native species
+away.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #distribution for invader away species
+spp.away = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away species
+nr.away = dat$nativerange[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away native range
+home.val = x[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species home values
+spp.home = dat$Species[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species at home
+nr.home = dat$nativerange[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader away native range
+homeother.val = x[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.spp = dat$Species[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.nr = substr(dat$Region[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg],1,1)
+
+homeother.valE = homeother.val[homeother.nr=="E"]
+homeother.valF = homeother.val[homeother.nr=="F"]
+
+reg.lab = levels(as.factor(nr.away))
+mean.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+se.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+
+#calculate means and SEs of above per home region
+for(i in 1:length(reg.lab)) {
+  #mean.mat[1:2,1] = mean(nat.val,na.rm=T) #first column is just mean of local natives
+  #se.mat[1:2,1] = sd(nat.val,na.rm=T)/sqrt(length(x[!is.na(x)]))
+  mean.mat[,2] = tapply(away.val,nr.away,function(x)mean(x,na.rm=T))
+  se.mat[,2] = tapply(away.val,nr.away,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  mean.mat[,3] = tapply(home.val,nr.home,function(x)mean(x,na.rm=T))
+  se.mat[,3] = tapply(home.val,nr.home,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  #mean.mat[,4] = tapply(homeother.val,homeother.nr,function(x)mean(x,na.rm=T))
+  #se.mat[,4] = tapply(homeother.val,homeother.nr,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+}
+#if(k==1) {mean.mat[2,4] = NA; se.mat[2,4] = NA}
+mean.mat[,4] = NA; se.mat[,4] = NA
+
+x1 = c(1,1.95,2.95,4)-1
+x2 = c(1,2.05,3.05,4)-1
+
+if(k==1) {
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="purple")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="darkgreen")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="purple",type="b")
+#points(x2,mean.mat[2,],cex=1.5,pch=19,col="darkorange",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="purple",lwd=2)
+#arrows(x2,mean.mat[2,]+se.mat[2,],x2,mean.mat[2,]-se.mat[2,],angle=90,length=.05,code=3,col="darkorange",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=halab,side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+boxplot(homeother.valF,col=NA,at=3,add=T,axes=F,border="purple")
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="darkgreen",lty=2)
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+mtext(lab.exp,side=2,line=1.5)
+if(j==1) {mtext("In USA",side=3,at=.5,cex=1,line=0,col="darkgreen")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+}
+
+if(k==2) {
+par(mar=c(.5,1,.5,1))
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="darkgreen")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="purple")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="darkgreen",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="darkgreen",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=halab,side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="purple",lty=2)
+#boxplot(homeother.val,col=NA,at=3,add=T,axes=F,border="darkgreen")
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+if(j==1) {mtext("In France",side=3,at=.5,cex=1,line=0,col="purple")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+}
+
+if(k==3) {
+par(mar=c(.5,0,.5,2))
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="purple")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="darkorange")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="darkgreen",type="b")
+points(x2,mean.mat[2,],cex=1.5,pch=19,col="purple",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="darkgreen",lwd=2)
+arrows(x2,mean.mat[2,]+se.mat[2,],x2,mean.mat[2,]-se.mat[2,],angle=90,length=.05,code=3,col="purple",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=halab,side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+#boxplot(homeother.valE,col=NA,at=2.8,add=T,axes=F,border="darkgreen")
+boxplot(homeother.valF,col=NA,at=3,add=T,axes=F,border="purple")
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="darkorange",lty=2)
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+#mtext(lab.exp,side=2,line=1.5)
+if(j==1) {mtext("In Japan",side=3,at=.5,cex=1,line=0,col="darkorange")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+}
+
+}
+} #trait loop
+ #region loop
+
+
+for(k in 1:3) { #native region loop
+  if(k==1) reg = "ENA"
+  if(k==2) reg = "France"
+  if(k==3) reg = "Japan"
+  
+
+for(j in 6:9) {
+  
+if(j==1) {
+  x = dat$log.cyan 
+  yval = c(2,5,10,20,50)
+  lab.exp = expression("Cyan")
+  yLim = log(c(min(yval),max(yval)))
+}
+
+if(j==2) {  
+  x = dat$log.alk
+  yval = c(.02,.1,.2,.5,1,3)
+  lab.exp = expression("Alkaloids")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==3) { 
+x = dat$fib.tot 
+yval = c(.1,.2,.3,.4,.5,.6)
+lab.exp = expression("Fiber")
+yLim = (c(min(yval),max(yval)))
+}
+
+if(j==4) {
+  x = dat$log.wall
+  yval = c(.1,.2,.5,1,2,5)
+  lab.exp = expression("Cell wall")
+  yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==5) { 
+x = dat$log.tot.prot
+yval = c(.2,.5,1,2)
+lab.exp = expression("Protein")
+yLim = log(c(min(yval),max(yval)))
+}
+  
+if(j==6) { 
+  x = dat$log.leafCN
+  yval = c(5,10,15,20,30,40)
+lab.exp = expression("CN")
+yLim = log(c(min(yval),max(yval)))
+}  
+  
+if(j==7) { 
+  x = dat$log.leafC
+  yval = c(38,42,44,46,52)
+lab.exp = expression("C")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==8) { 
+  x = dat$log.leafN
+  yval = c(1,1.5,2,3,5)
+lab.exp = expression("N")
+yLim = log(c(min(yval),max(yval)))
+}    
+  
+if(j==9) { 
+  x = dat$log.SLA
+  yval = c(100,200,300,400,600)
+lab.exp = expression("SLA")
+yLim = log(c(min(yval),max(yval)))
+}      
+  
+nat.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #distribution for native species
+spp.nat = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="home"] #list of native species
+away.val = x[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #distribution for invader away species
+spp.away = dat$Species[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away species
+nr.away = dat$nativerange[dat$woody==form&dat$Region==reg&dat$homeaway=="away"] #vector of invader away native range
+home.val = x[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species home values
+spp.home = dat$Species[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader  species at home
+nr.home = dat$nativerange[dat$woody==form&dat$homeaway=="home"&is.element(dat$Species,spp.away)] #vector of invader away native range
+homeother.val = x[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.spp = dat$Species[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg]
+homeother.nr = substr(dat$Region[dat$woody==form&dat$homeaway=="home"&dat$invader=="native"&dat$Region!=reg],1,1)
+
+homeother.valE = homeother.val[homeother.nr=="E"]
+homeother.valF = homeother.val[homeother.nr=="F"]
+
+reg.lab = levels(as.factor(nr.away))
+mean.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+se.mat = matrix(NA,length(reg.lab),4) #rows for native Region, cols for "Natives in Away range", "Away range", "Home range", "Natives at Home"
+
+#calculate means and SEs of above per home region
+for(i in 1:length(reg.lab)) {
+  #mean.mat[1:2,1] = mean(nat.val,na.rm=T) #first column is just mean of local natives
+  #se.mat[1:2,1] = sd(nat.val,na.rm=T)/sqrt(length(x[!is.na(x)]))
+  mean.mat[,2] = tapply(away.val,nr.away,function(x)mean(x,na.rm=T))
+  se.mat[,2] = tapply(away.val,nr.away,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  mean.mat[,3] = tapply(home.val,nr.home,function(x)mean(x,na.rm=T))
+  se.mat[,3] = tapply(home.val,nr.home,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+  #mean.mat[,4] = tapply(homeother.val,homeother.nr,function(x)mean(x,na.rm=T))
+  #se.mat[,4] = tapply(homeother.val,homeother.nr,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+}
+#if(k==1) {mean.mat[2,4] = NA; se.mat[2,4] = NA}
+#mean.mat[,4] = NA; se.mat[,4] = NA
+
+x1 = c(1,1.95,2.95,3.95)-1
+x2 = c(1,2.05,3.05,4.05)-1
+
+if(k==1) {
+  par(mar=c(.5,2,.5,0))
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="purple")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="darkgreen")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="purple",type="b")
+#points(x2,mean.mat[2,],cex=1.5,pch=19,col="darkorange",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="purple",lwd=2)
+#arrows(x2,mean.mat[2,]+se.mat[2,],x2,mean.mat[2,]-se.mat[2,],angle=90,length=.05,code=3,col="darkorange",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=halab,side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+boxplot(homeother.valF,col=NA,at=3,add=T,axes=F,border="purple")
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="darkgreen",lty=2)
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+mtext(lab.exp,side=2,line=1.5)
+if(j==6) {mtext("In USA",side=3,at=.5,cex=1,line=0,col="darkgreen")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+}
+
+if(k==2) {
+par(mar=c(.5,1,.5,1))
+if(j==6) {plot(1,1,type="n",bty="n",axes=F)}
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="darkgreen")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="purple")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="darkgreen",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="darkgreen",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=halab,side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="purple",lty=2)
+#boxplot(homeother.val,col=NA,at=3,add=T,axes=F,border="darkgreen")
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+if(j==6) {mtext("In France",side=3,at=.5,cex=1,line=0,col="purple")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+}
+
+if(k==3) {
+par(mar=c(.5,0,.5,2))
+if(j==6) {plot(1,1,type="n",bty="n",axes=F)}
+plot(x1,mean.mat[1,],xlim=c(-.75,3.8),ylim=yLim,xaxt="n",xlab="",bty="n",cex=1.4,yaxt="n",ylab="",pch=19,col="purple")
+boxplot(nat.val,col=NA,at=0,add=T,axes=F,border="darkorange")
+polygon(x=c(1.5,1.5,3.5,3.5),y=c(yLim,rev(yLim)),col="gray95",border=NA)
+points(x1,mean.mat[1,],cex=1.5,pch=19,col="darkgreen",type="b")
+points(x2,mean.mat[2,],cex=1.5,pch=19,col="purple",type="b")
+arrows(x1,mean.mat[1,]+se.mat[1,],x1,mean.mat[1,]-se.mat[1,],angle=90,length=.05,code=3,col="darkgreen",lwd=2)
+arrows(x2,mean.mat[2,]+se.mat[2,],x2,mean.mat[2,]-se.mat[2,],angle=90,length=.05,code=3,col="purple",lwd=2)
+mtext(c("Natives","Away","Home","Natives"),at=halab,side=1,line=-.5,cex=.7)
+mtext(c("Invaders"),at=1.5,side=1,line=-1.5,cex=.7)
+boxplot(homeother.valF,col=NA,at=3,add=T,axes=F,border="purple")
+segments(x1[1],median(nat.val,na.rm=T),3.5,median(nat.val,na.rm=T),col="darkorange",lty=2)
+if(j!=3) {axis(2,at=log(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)} else     {axis(2,at=(yval),labels=yval,ylim=c(min),line=-1,ylab=lab.exp)}
+#mtext(lab.exp,side=2,line=1.5)
+if(j==6) {mtext("In Japan",side=3,at=.5,cex=1,line=0,col="darkorange")
+mtext("At Home",side=3,at=2.5,cex=1,line=0,col="gray35")}
+}
+
+}
+} #trait loop
+ #region loop
+
+#legend
+plot(c(.5,.5,.5),c(-.5,1.5,3.5)-1,col=c("darkgreen","purple","darkorange"),bty="n",xaxt="n",yaxt="n",ylim=c(-2,6),xlab="",ylab="",xlim=c(-1,5),pch=19,cex=2)
+text(c(1,1,1),c(-.5,1.5,3.5)-1,c("USA","France","Japan"),col=c("darkgreen","purple","darkorange"),cex=1.7,adj=0)
+text(1.7,4.3,"Native range",cex=1.8)
+dev.off()
+
+```
+
+
+
+# Supplements
+
+This creates a supplemental table of home-away differences of all species for all traits.
+
+```{r}
+
+#create target list, woodies first then herbs
+wt = table(dat$Species[dat$woody==1])
+wn = names(wt[wt>2])
+ht = table(dat$Species[dat$woody==0])
+hn = names(ht[ht>2])
+spplist = c(wn,hn)
+
+#traits
+tr.select = c("SLA2","leafN","leafC","leafCN","tot.prot","wall","fib.tot","alk","cyan")
+colnames = c("Species",paste(rep(tr.select,each=3),rep(c("H","A","P"),times=length(tr.select))))
+
+spptab = matrix("",nrow=length(spplist),ncol=length(colnames))
+colnames(spptab) = colnames
+
+for(i in 1:length(spplist)) {
+  #select species
+  sp = spplist[i]
+  spptab[i,1] = sp
+
+  for(j in 1:length(tr.select)) {
+    #select trait
+    d = na.exclude(dat[dat$Species==sp,c("Species","homeaway",tr.select[j])])
+
+      #mean and s.e. of trait in home and away range
+      m = tapply(d[,3],d[,2],function(x)mean(x,na.rm=T))
+      se = tapply(d[,3],d[,2],function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+
+      #t test P value
+      x = table(d[,2])
+      if(length(x) > 1 & min(x) > 1) p = t.test(d[,3]~d[,2])$p.value else p = "NA"
+      if(p>0.05) a = "" else {if(p>0.01) a = "*" else {if(p>0.001) a = "**" else a = "***"}}
+
+      #insert in output table
+      spptab[i,j*3-1] = paste(signif(m["home"],3),signif(se["home"],2),sep=" \u00B1 " ) #home
+      spptab[i,j*3] = paste(signif(m["away"],3),signif(se["away"],2),sep=" \u00B1 " ) #away
+      spptab[i,j*3+1] = a
+    }
+}
+#write.table(spptab,"spptab.txt",sep=";")
+
+```
+
+This is for Table 2: a table of trait means per region.
+
+```{r}
+
+#cyan
+x1 = dat$cyan[dat$Species=="Prunus serotina"]
+x2 = dat$log.cyan[dat$Species=="Prunus serotina"]
+reg = dat$Region[dat$Species=="Prunus serotina"]
+tapply(x1,reg,function(x)mean(x,na.rm=T))
+tapply(x2,reg,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~reg,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#alk
+x1 = dat$alk
+x2 = dat$log.alk
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#fiber
+x1 = dat$fib.tot
+x2 = dat$fib.tot
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#cell wall
+x1 = dat$wall
+x2 = dat$log.wall
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#total protein
+x1 = dat$tot.prot
+x2 = dat$log.tot.prot
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#CN
+x1 = dat$leafCN
+x2 = dat$log.leafCN
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#C
+x1 = dat$leafC
+x2 = dat$log.leafC
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#N
+x1 = dat$leafN
+x2 = dat$log.leafN
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+#SLA
+x1 = dat$SLA
+x2 = dat$log.SLA
+tapply(x1,dat$Region,function(x)mean(x,na.rm=T))
+tapply(x2,dat$Region,function(x)sd(x,na.rm=T)/sqrt(length(x[!is.na(x)])))
+aov1 = aov(x2~Region,dat)
+summary(aov1)
+TukeyHSD(aov1)
+
+
+```
+
+
+This is for Robert's suggested visualization of a 'join the locals' diagram, one for each trait. (4-24-24)
+
+```{r}
+
+#1. create initial data frame that includes each species-region couplet, along with the mean and se of each trait; traits have their own column (rather than 'wide' format)
+
+#create target list, woodies first then herbs
+wt = table(dat$Species[dat$woody==1])
+wn = names(wt[wt>2])
+ht = table(dat$Species[dat$woody==0])
+hn = names(ht[ht>2])
+spplist = c(wn,hn)
+
+#traits
+tr.select = c("SLA2","leafN","leafC","leafCN","tot.prot","wall","fib.tot","alk","cyan")
+
+#regions
+reg = c("E","F","J")
+
+#build data frame recursively
+species = NULL
+trait = NULL
+region = NULL
+woody = NULL
+home = NULL
+native = NULL 
+value = NULL #trait value
+sd = NULL #trait sd
+valueN = NULL #sample size 
+
+nx = 1
+for(s in 1:length(spplist)) {
+  for(r in 1:length(reg)) {
+    for(t in 1:length(tr.select)) {
+      
+      species[nx] = spplist[s]
+      region[nx] = reg[r]
+      trait[nx] = tr.select[t]
+      
+      test = dat$woody[dat$Species==spplist[s] & dat$region==reg[r]]
+      if(length(test[!is.na(test)])==0) next
+      
+      woody[nx] = sort(dat$woody[dat$Species==spplist[s] & dat$region==reg[r]])[1]
+      home[nx] = sort(dat$home[dat$Species==spplist[s] & dat$region==reg[r]])[1]
+      native[nx] = sort(dat$native[dat$Species==spplist[s] & dat$region==reg[r]])[1]
+      x = dat[dat$Species==spplist[s] & dat$region==reg[r],tr.select[t]]
+      value[nx] = mean(x,na.rm=T)
+      sd[nx] = sd(x,na.rm=T)
+      valueN[nx] = length(x[!is.na(x)])
+
+      nx = nx + 1
+    }
+  }
+}
+out = data.frame(species,region,native,home,woody,trait,value,sd,valueN)
+
+#for each row of the above matrix, calculate the mean and se of the 'locals'
+  #native range: all other native species
+  #alien range: all native species in that region
+
+local.value = NULL
+local.sd = NULL
+localN = NULL
+diff.mean = NULL #mean trait difference with locals
+diff.sd = NULL #sd of trait difference with locals
+
+for(i in 1:dim(out)[1]) {
+  #take all rows of the associated growth form, region, and trait, but only 'home' species there and without the focal species
+  x = out$value[region==region[i] & home=="home" & woody==woody[i] & trait==trait[i] & species!=species[i]]
+  
+  local.value[i] = mean(x)
+  local.sd[i] = sd(x)
+  localN[i] = length(x)
+  
+  #simulate mean differences
+  se1 = out$sd[i] / sqrt(out$valueN[i])
+  se2 = local.sd[i] / sqrt(localN[i])
+  #1000 random draws of each
+  draw1 = rnorm(1000,mean=out$value[i],sd=se1)
+  draw2 = rnorm(1000,mean=local.value[i],sd=se2)
+  diff = draw1 - draw2 
+  
+  diff.mean[i] = mean(diff)
+  diff.sd[i] = sd(diff)
+}
+out = data.frame(out,local.value,local.sd,localN,diff.mean,diff.sd)
+
+#create new data frame of species-region couplets
+out.away = out[out$home=="away",] #all species that have an away range
+out.home = data.frame(matrix(NA,nrow=1,ncol=length(names(out.away)))); names(out.home) = names(out.away)
+for(i in 1:dim(out.away)[1]) {
+  x = out[out$species == out.away$species[i] & out$home == "home" & out$trait == out.away$trait[i],]
+  
+  if(dim(x)[1]>1) x = rowMeans(x)
+  out.home[i,] = x
+}
+
+#and new data frame of mean, se values of each trait for native species in each region
+library(doBy)
+fun <- function(x){
+  c(m=mean(x,na.rm=T), sd=sd(x,na.rm=T), n=length(x))
+}
+locals = summaryBy(value~region+home+woody+trait,FUN=fun,out[out$home=="home",])
+locals.noPRSE = summaryBy(value~region+home+woody+trait,FUN=fun,out[out$species!="Prunus serotina"&out$home=="home",])
+
+#calculate other differences suggested in Robert's new diagram
+#home trait value compared to natives in away range
+out.home$diff.mean.away = out.home$value - out.away$local.value
+out.away$diff.mean.home = out.away$value - out.home$local.value
+
+### plot on Robert's suggested diagram, one for each trait
+
+#labels
+pretty = rep("",9)
+pretty[1] = "SLA"
+pretty[2] = "N"
+pretty[3] = "C"
+pretty[4] = "CN"
+pretty[5] = expression("Protein")
+pretty[6] = expression("Cell wall")
+pretty[7] = expression("Fiber")
+pretty[8] = expression("Alkaloids")
+pretty[9] = expression("Cyan")
+
+#standard deviations for each trait across data
+sdtraits = rep(0,9)
+for(i in 1:9) {sdtraits[i] = sd(dat[,tr.select[i]],na.rm=T)}
+sdtraits[9] = sd(dat[dat$Species!="Prunus serotina",tr.select[i]],na.rm=T)
+
+#axes limits for each trait (max difference)
+maxdiff = c(200,2,10,13,2,2,.3,1.2,30)
+#color = c("darkgreen","brown")[out.home$woody+1][out.home$trait=="SLA2"] #woody are brown
+color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region))]
+
+#herbs only
+par(mfrow=c(3,3),mar=c(5,5,3,1))
+for(i in 1:9) {
+
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region[out.home$trait==trt&out.home$woody==0]))]
+  
+  par(adj=.5)
+  plot(out.home$diff.mean[out.home$trait==trt&out.home$woody==0],out.away$diff.mean[out.away$trait==trt&out.home$woody==0],
+     xlab="Home difference",ylab="Away difference",pch=19,cex=2,
+     xlim=c(-maxdiff[i],maxdiff[i]),ylim=c(-maxdiff[i],maxdiff[i]),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(out.home$diff.mean[out.home$trait==trt&out.home$woody==0],out.away$diff.mean[out.away$trait==trt&out.home$woody==0],col=color,pch=21,lwd=.5,cex=2)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2);abline(v=0,lty=2)
+  abline(h=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+  abline(v=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+}
+
+#woodies only
+par(mfrow=c(3,3),mar=c(5,5,3,1))
+for(i in 1:9) {
+
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region[out.home$trait==trt&out.home$woody==1]))]
+  
+  par(adj=.5)
+  plot(out.home$diff.mean[out.home$trait==trt&out.home$woody==1],out.away$diff.mean[out.away$trait==trt&out.home$woody==1],
+     xlab="Home difference",ylab="Away difference",pch=19,cex=2,
+     xlim=c(-maxdiff[i],maxdiff[i]),ylim=c(-maxdiff[i],maxdiff[i]),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(out.home$diff.mean[out.home$trait==trt&out.home$woody==1],out.away$diff.mean[out.away$trait==trt&out.home$woody==1],col=color,pch=21,lwd=.5,cex=2)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2);abline(v=0,lty=2)
+  abline(h=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+  abline(v=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+}
+
+#################################################
+##JDF version, 5-7-24
+#create single dataset that has invader shift, and mean difference between natives
+out1 = out.home[,c(1,2,3,5,6)]
+out1$inv.home = out.home$value
+out1$inv.away = out.away$value
+out1$nat.home = out.home$local.value
+out1$nat.away = out.away$local.value
+
+pdf("Homeaway_regionalDiff.pdf",height=8,width=8)
+par(mfrow=c(3,3),mar=c(4.5,4.5,3,1))
+for(i in 1:9) {
+
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region[out.home$trait==trt]))]
+  
+  x = out1$nat.home[out1$trait==trt]-out1$nat.away[out1$trait==trt]
+  y = out1$inv.home[out1$trait==trt]-out1$inv.away[out1$trait==trt]
+  w = out1$woody[out1$trait==trt]
+
+  par(adj=.5)
+  plot(x,y,
+     xlab="Regional difference",ylab="Invader shift",pch=19,cex=2,
+     #xlim=c(xmin[i],xmax[i]),ylim=c(ymin[i],ymax[i]),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(x,y,col=color,pch=21,lwd=.5,cex=2)
+  points(x[w==1],y[w==1],cex=2,pch=21,lwd=1.5)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2);abline(v=0,lty=2)
+  abline(0,1,lty=2,col="gray")
+  if(is.element(i,c(1:3,5:8))) abline(lsfit(x,y),lwd=3)
+  #print(summary(lm(y~x)))
+}
+dev.off()
+
+#bootstrap P and R2 values
+N = 1000 #bootstrap samples
+bootP = rep(0,9)
+for(i in 1:9) {
+  trt = tr.select[i]
+  x = out1$nat.home[out1$trait==trt]-out1$nat.away[out1$trait==trt]
+  y = out1$inv.home[out1$trait==trt]-out1$inv.away[out1$trait==trt]
+  #sample x and y with replacement
+  slope.null = rep(0,N)
+    for(j in 1:N) {
+      x1 = sample(x,replace=T)
+      y1 = sample(y,replace=T)
+      slope.null[j] = summary(lm(y1~x1))[[4]][2,1]
+    }
+  bootP[i] = sum((abs(coef(lm(y~x))[2]) < slope.null)) / N
+}
+#bootP: 0.004, 0.048, 0.026, 0.059, 0.039, 0.002, 0.045, 0.011, 0.360
+
+
+
+
+##################################################
+##corrected version after Robert's email 4-24-24:
+#For the conceptual figure I sent, the two points represent 4 different comparisons for a single species:
+  #X1: Home range trait value compared to natives in the home range (dark point) - it is the like the locals in its home range: this is out.home$diff.mean  
+#Y1: Home range trait value compared to natives in the away range (dark point) - an indication of how much it would need to shift to join the locals in the away range: this is out.home$diff.mean.away
+#X2: Away range trait value compared to natives in its home range (light point) - an indication of how much it did shift #away from its home community: this is out.away$diff.mean.home
+#Y2: Away range trait value compared to natives in the away range (light point) - did it join the locals? this is out.away$diff.mean
+
+maxdiff = c(200,3,10,17,2.5,2,.3,1.2,30)
+
+#herbs only
+par(mfrow=c(3,3),mar=c(5,5,3,1))
+for(i in 1:9) {
+
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region[out.home$trait==trt&out.home$woody==0]))]
+  
+  par(adj=.5)
+  plot(out.home$diff.mean[out.home$trait==trt&out.home$woody==0],out.home$diff.mean.away[out.away$trait==trt&out.home$woody==0],
+     xlab="Home difference",ylab="Away difference",pch=19,cex=2,
+     xlim=c(-maxdiff[i],maxdiff[i]),ylim=c(-maxdiff[i],maxdiff[i]),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(out.home$diff.mean[out.home$trait==trt&out.home$woody==0],out.home$diff.mean.away[out.home$trait==trt&out.home$woody==0],col=color,pch=21,lwd=.5,cex=2)
+  points(out.away$diff.mean.home[out.away$trait==trt&out.away$woody==0],out.away$diff.mean[out.away$trait==trt&out.away$woody==0],col=color,pch=21,lwd=1,cex=2)
+  arrows(out.home$diff.mean[out.home$trait==trt&out.home$woody==0],out.home$diff.mean.away[out.home$trait==trt&out.home$woody==0],out.away$diff.mean.home[out.away$trait==trt&out.away$woody==0],out.away$diff.mean[out.away$trait==trt&out.away$woody==0],length=.1)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2);abline(v=0,lty=2)
+  #abline(h=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+  #abline(v=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+}
+
+#woody only
+par(mfrow=c(3,3),mar=c(5,5,3,1))
+for(i in 1:9) {
+
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region[out.home$trait==trt&out.home$woody==1]))]
+  
+  par(adj=.5)
+  plot(out.home$diff.mean[out.home$trait==trt&out.home$woody==1],out.home$diff.mean.away[out.away$trait==trt&out.home$woody==1],
+     xlab="Home difference",ylab="Away difference",pch=19,cex=2,
+     xlim=c(-maxdiff[i],maxdiff[i]),ylim=c(-maxdiff[i],maxdiff[i]),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(out.home$diff.mean[out.home$trait==trt&out.home$woody==1],out.home$diff.mean.away[out.home$trait==trt&out.home$woody==1],col=color,pch=21,lwd=.5,cex=2)
+  points(out.away$diff.mean.home[out.away$trait==trt&out.away$woody==1],out.away$diff.mean[out.away$trait==trt&out.away$woody==1],col=color,pch=21,lwd=1,cex=2)
+  arrows(out.home$diff.mean[out.home$trait==trt&out.home$woody==1],out.home$diff.mean.away[out.home$trait==trt&out.home$woody==1],out.away$diff.mean.home[out.away$trait==trt&out.away$woody==1],out.away$diff.mean[out.away$trait==trt&out.away$woody==1],length=.1)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2);abline(v=0,lty=2)
+  #abline(h=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+  #abline(v=c(sdtraits[i],-1*sdtraits[i]),col="gray")
+}
+
+
+
+
+
+
+#another graphing option: plot home vs. away values, but do it in the context of native values of both regions
+
+#woodies only
+maxdiff = c(550,3.6,10,13,2,2,.3,1.2,30)
+par(mfrow=c(3,3),mar=c(5,5,3,1))
+for(i in 1:9) {
+
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(out.home$region[out.home$trait==trt&out.home$woody==1]))]
+  
+  y = c(out.home$value[out.home$trait==trt&out.home$woody==1],out.away$value[out.away$trait==trt&out.home$woody==1])
+  y = y[!is.na(y)]
+  if(i==9) y=y[y<300]
+  
+  par(adj=.5)
+  plot(out.home$value[out.home$trait==trt&out.home$woody==1],out.away$value[out.away$trait==trt&out.home$woody==1],
+     xlab="Home",ylab="Away",pch=19,cex=2,
+     xlim=c(min(y),max(y)),ylim=c(min(y),max(y)),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(out.home$value[out.home$trait==trt&out.home$woody==1],out.away$value[out.away$trait==trt&out.home$woody==1],col=color,pch=21,lwd=.5,cex=2)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(0,1,lty=2,col="gray")
+
+  #plot regional contrasts for native species pools
+  loc = locals[locals$trait==trt&locals$woody==1,]
+    if(i==9) loc = locals.noPRSE[locals$trait==trt&locals$woody==1,]
+  #loc = loc[is.element(loc$region,unique(loc$region)[table(loc$region)>1]),]
+  #points(loc$value.m[loc$home=="home"],loc$value.m[loc$home=="away"])
+  #abline(h=loc$value.m,col=c("darkgreen","purple","darkorange"))
+  #abline(v=loc$value.m,col=c("darkgreen","purple","darkorange"))
+  points(loc$value.m,loc$value.m,col=c("darkgreen","purple","darkorange"),pch=15,cex=2)
+  
+}
+
+#still makes no sense
+#how about relating the home-away shift for each species to the difference in that trait between regions?
+
+#home-away shift dataset
+shift = out.away$value - out.home$value
+sh = data.frame(out.home[,c(1,2,3,5,6)],shift,out.away$region)
+sh$reg.diff = rep(0,dim(sh)[1])
+for(i in 1:dim(sh)[1]) {
+  away.reg = locals$value.m[locals$woody==sh$woody[i] & locals$trait == sh$trait[i] & locals$region == sh$out.away.region[i]]
+  home.reg = locals$value.m[locals$woody==sh$woody[i] & locals$trait == sh$trait[i] & locals$region == sh$region[i]]
+  sh$reg.diff[i] = away.reg - home.reg
+  
+  if(sh$trait[i]=="cyan") {
+      away.reg = locals.noPRSE$value.m[locals$woody==sh$woody[i] & locals$trait == sh$trait[i] & locals$region == sh$out.away.region[i]]
+  home.reg = locals.noPRSE$value.m[locals$woody==sh$woody[i] & locals$trait == sh$trait[i] & locals$region == sh$region[i]]
+  sh$reg.diff[i] = away.reg - home.reg
+  }
+}
+
+
+#pdf("Relative_shifts.pdf",width=8,height=8)
+#woody
+par(mfrow=c(3,3),mar=c(5,5,3,1),oma=c(1,1,3,1))
+for(i in 1:9) {
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(sh$region[sh$trait==trt&sh$woody==1]))]
+  col2 = c("darkgreen","purple","darkorange") [as.numeric(as.factor(sh$out.away.region[sh$trait==trt&sh$woody==1]))]
+  par(adj=.5)
+  plot(sh$reg.diff[sh$trait==trt&sh$woody==1],sh$shift[sh$trait==trt&sh$woody==1],
+     xlab="Regional difference",ylab="Invader shift",pch=19,cex=2,
+     #xlim=c(min(y),max(y)),ylim=c(min(y),max(y)),
+     col=adjustcolor(color, alpha.f = 0.9),cex.lab=1.4,cex.axis=1.4)
+  points(sh$reg.diff[sh$trait==trt&sh$woody==1],sh$shift[sh$trait==trt&sh$woody==1],col=col2,pch=21,lwd=2,cex=2)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  #abline(0,1,lty=2,col="gray")
+  abline(v=0,lty=2,col="gray")
+  abline(h=0,lty=2,col="gray")
+  if(i==1) mtext("Woody species",side=3,line=4,cex=1.7)  
+}
+
+
+#herbs
+par(mfrow=c(3,3),mar=c(5,5,3,1))
+for(i in 1:9) {
+  trt = tr.select[i]
+  color = c("darkgreen","purple","darkorange") [as.numeric(as.factor(sh$region[sh$trait==trt&sh$woody==0]))]
+  col2 = c("darkgreen","purple","darkorange") [as.numeric(as.factor(sh$out.away.region[sh$trait==trt&sh$woody==0]))]
+
+  par(adj=.5)
+  
+  if(i==1) {
+      plot(sh$reg.diff[sh$trait==trt&sh$woody==0],sh$shift[sh$trait==trt&sh$woody==0],
+     xlab="Regional diff",ylab="Invader shift",pch=19,cex=2,
+     ylim=c(-100,100),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(sh$reg.diff[sh$trait==trt&sh$woody==0],sh$shift[sh$trait==trt&sh$woody==0],col=col2,pch=21,lwd=2,cex=2)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2,col="gray")
+  abline(v=0,lty=2,col="gray")
+  mtext("Herbaceous species",side=3,line=4,cex=1.7)  
+  }
+  else {  
+  
+  plot(sh$reg.diff[sh$trait==trt&sh$woody==0],sh$shift[sh$trait==trt&sh$woody==0],
+     xlab="Regional diff",ylab="Invader shift",pch=19,cex=2,
+     #xlim=c(min(y),max(y)),ylim=c(min(y),max(y)),
+     col=adjustcolor(color, alpha.f = 0.4),cex.lab=1.4,cex.axis=1.4)
+  points(sh$reg.diff[sh$trait==trt&sh$woody==0],sh$shift[sh$trait==trt&sh$woody==0],col=col2,pch=21,lwd=2,cex=2)
+  par(adj=0)
+  title(main=pretty[i],line=1,cex.main=1.7)
+  abline(h=0,lty=2,col="gray")
+  abline(v=0,lty=2,col="gray")
+  }
+}
+#dev.off()  
+
+```
